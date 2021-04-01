@@ -1,0 +1,4 @@
+server_name ipv4 port
+localtest 127.0.0.1 1234
+worker 0 0
+default 127.0.0.1 1234
