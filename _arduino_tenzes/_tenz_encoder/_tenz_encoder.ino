@@ -18,16 +18,16 @@ void setup() {
 }
 
 void loop() {
-  delay(300);
+  delay(1000);
   
   int command_len_in_bytes = 6;
   char command_buffer[command_len_in_bytes];
-  struct Command{ //7 bytes
+  struct Command{ //6 bytes
     char header; // to recognize a command header must be 42
     //header is kinda key to acsess 
     char number; // uint8 command number
     //unsigned int data_field_size; // uint8 data field size
-    int data_value; // data value (int - 4 bytes long)
+    float data_value; // data value (float - 4 bytes long)
     };
   int response_len_in_bytes = 6;
   struct Response{

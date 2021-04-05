@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import (
 
 from commands import Command
 
+from window_misc import set_all_motor_buttons_to_default, show_error, status
+
 #-------------------ФУНКЦИИ ДЛЯ ВЫПОЛНЕНИЯ КОМАНД-------------------
 
 #---------------------------главная вкладка----------------------------
@@ -101,6 +103,7 @@ def bench_motor_close(ui, conn):
 
 #----------------------------вкладка датчиков----------------------------
 
+#-------------------------------прочее----------------------------------
 #tuple of all command makers for fast importing
 '''command_maker_funcs = [
     expand_all,
@@ -113,7 +116,7 @@ def bench_motor_close(ui, conn):
     reflector_lower_motor_open,
     reflector_lower_motor_close,
 ]'''
-#------------------------------прочие функции----------------------------
+
 def give_cmd(ui: QWidget, cmd_name: str, is_cmd_succ: bool):
     status(
         ui, 
@@ -123,35 +126,3 @@ def give_cmd(ui: QWidget, cmd_name: str, is_cmd_succ: bool):
 
 def give_cmd_no_status(ui: QWidget, cmd_name: str, is_cmd_succ: bool):
     if not is_cmd_succ: show_error(f'Error in "{cmd_name}" comand!')
-
-def show_error(text: str):
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Critical)
-    msg.setText(text)
-    msg.exec()
-
-def status(ui: QWidget, status_message: str): #alias
-    ui.statusbar.showMessage(status_message)
-
-def set_all_motor_buttons_to_default(ui):
-    motor_buttons_info = [
-        (ui.expand_all_button     , 'Раскрывать всё'),
-        (ui.contract_all_button   , 'Складывать всё'),
-        # (ui.all_motors_stop_button здесь не нужна),
-
-        (ui.reflector_expand_button           , 'Раскрывать'),
-        (ui.reflector_contract_button         , 'Складывать'),
-        (ui.reflector_upper_motor_open_button , 'Открывать'),
-        (ui.reflector_upper_motor_close_button, 'Закрывать'),
-        (ui.reflector_lower_motor_open_button , 'Открывать'),
-        (ui.reflector_lower_motor_close_button, 'Закрывать'),
-
-        (ui.bench_expand_button     , 'Раскрывать'),
-        (ui.bench_contract_button   , 'Складывать'),
-        (ui.bench_motor_open_button , 'Открывать'),
-        (ui.bench_motor_close_button, 'Закрывать')
-    ]
-    for button, default_text in motor_buttons_info:
-        button.setText(default_text)
-        button.setChecked(False)
-    print('All buttons have been set into default state (is_checked and text)')

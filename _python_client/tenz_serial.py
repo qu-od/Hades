@@ -22,18 +22,18 @@ def get_comports_list():
     return port_list
 
 
-#--------------------------------SINGLE PORT CLASS----------------------------------
+#--------------------------------CLASSES FOR TENZ----------------------------------
 
-class TenzSerialPort(object):
+class ComPort(object):
     def __init__(self, comport_number: int, name: str = None, baudrate: int = 19200):
         self._ser: Optional[serial.Serial] = None
         self._number: int = comport_number
         self._baudrate: int = baudrate
         self.name: Optional[str] = name
-        self.header: int = 42 #key for tenz commands
 
     def __str__(self): return f"PORT COM-{self._number}" #to ease debug messages
     
+    #---------------------------методы для пересылок----------------------------
     def open(self):
         try:
             self._ser = serial.Serial(f'COM{self._number}') #self means "COM1" for COM1 port
@@ -77,53 +77,108 @@ class TenzSerialPort(object):
         print(f'--- FROM {self} --- :', line[:-1])
         return line
 
+
+    #-------------------------CALIBRATION PAIR CLASS----------------------------
+
+class CalibrationDict(dict):
+    def __init__(self):
+        # self_type = Dict[int, Tuple[float, float]]
+        print("Calibration dict created")
+
+    def add_calibration_pair(self, weight: float, value: float):
+        calib_pairs_number = self.__len__()
+        self[calib_pairs_number+1] = weight, value
+        print('Calibration pair added')
+
+    def clear_all_calibration_pairs(self):
+        self.clear()
+        print('Calibration pairs cleared')
+
+    def delete_last_calibration_pair(self):
+        calib_pairs_number = self.__len__()
+        deleted_pair: tuple = self.pop(calib_pairs_number)
+        print("Deleted calibration pair is", deleted_pair)
+
+    def dumb_mean_scale_for_tenz(self) -> float:
+        scales: list = [value / weight for weight, value in self.values()]
+        # мышца "а почему-бы и нет" прокачана
+        return sum(scales) / len(scales)
+
+
+#---------------------------------TENZ CLASS ITSELF-----------------------------
+
+class Tenz(object):
+
+    def __init__(self, comport_number: int):
+        self.comport = ComPort(comport_number)
+        self.header: int = 42 #key for tenz commands
+        self.calib_dict = CalibrationDict()
+
     def exec_command(
             self, command_number: int, 
-            data_value: int = 0):
+            data_value: float = 0.):
         #now size of data_value is 4 bytes (signed int)
         #data_value must be an optional field to make most commands 3 times shorter 
-        self.write_bytes(
-            struct.pack('>2Bi', self.header, command_number, data_value)
+        self.comport.write_bytes(
+            struct.pack('=2Bf', self.header, command_number, data_value)
         )
-        response_header: int
-        error_code: int
-        response_data_value: float
-        response_header, error_code, response_data_value = \
 
-            struct.unpack('>2Bi', self.read_bytes(6)) #NEED TESTING!
-            
+        response_tuple: Tuple[int, int, float]
+        response_tuple = struct.unpack('=2Bf', self.comport.read_bytes(6)) #NEED TESTING!
+        response_header, error_code, response_data_value = response_tuple
+        print('DECODED RESPONSE:', response_header, error_code, response_data_value)
+
         #also prints response in console
         if error_code != 0: 
             print(f'ERROR NUMBER {error_code} OCCURED ON ARDUINO')
             return
         elif error_code == 0: 
             return response_data_value
+    
+    def sign_weight(self, weight_in_kilos: float = 1.):
+        self.calib_dict.add_calibration_pair(weight_in_kilos, self.get_value())
 
+    def calc_scale(self) -> float:
+        if not self.calib_dict: 
+            print("Calibration dict is empty! Can't calculate scale for tenz.")
+            return
+        return self.calib_dict.dumb_mean_scale_for_tenz()
+
+    #---------------------------command methods---------------------------------
     def tare(self):
         self.exec_command(0)
 
     def get_value(self) -> float:
-        # time.sleep(3)
         value: float = self.exec_command(1)
         return value
 
-    def set_scale(self, scale: int):
+    def set_scale(self, scale: float):
         self.exec_command(2, scale)
 
     def get_units(self) -> float:
         units: float = self.exec_command(3)
         return units
 
+    def set_loop_delay(self):
+        pass
+
+    def flush_arduino_serial_buffer_input_and_output(self):
+        pass
+
+    def force_set_offset(self):
+        pass
+
+    def get_info(self):
+        pass
+
 
 
 #--------------------------------MULTIPLE PORTS CLASS----------------------------------
 
-class TenzPorts(object):
+'''class TenzList(list):
     def __init__(self, *ports):
-        self.ports: list = list(ports)
-
-    def __str__(self):
         pass
+        self.ports: list = list(ports)
 
     def read_ports_simultaneously(*comports_names):
         pass
@@ -133,43 +188,34 @@ class TenzPorts(object):
         for _ in range(100):
             read_line_from_serial(ser_list[0])
             read_line_from_serial(ser_list[1])
-        # map(read_line_from_serial, ser_list)
+        # map(read_line_from_serial, ser_list)'''
 
 
 #-----------------------------------MAIN FOR TESTING-------------------------------------
 def calibration_test():
-    #MAKE CONTEXT MANAGER FOR WirelessSerialPort
+    tenz = Tenz(11)
+    tenz.comport.open()
 
-    tenz_port = TenzSerialPort(5)
-    tenz_port.open()
-    # tenz_port.flush_input()
-    tenz_port.tare() #TARE WITH NO LOAD
-    # weights = [1, 2, 3, 4] #in kilos
-    weights = [1, 2] #in kilos
-    scales = [  
-        tenz_port.get_value() / weights[i] #TRY A BUNCH OF LOADS (better be 5 to 10):
-        for i in range(len(weights))
-        ]
-    mean_scale: float = sum(scales) / len(scales)
-    tenz_port.set_scale(mean_scale) #SET_SCALE
-    data_in_kilos = [
-        tenz_port.get_units() #GET_UNITS in kilos
-        for _ in range (100)
-      ]  
-    # tenz_port.exec_command('100') #wrong command attempt
-    tenz_port.close()
+    tenz.tare()
+
+    time.sleep(5)
+    tenz.sign_weight(weight_in_kilos = 1.)
+    time.sleep(5)
+    tenz.sign_weight(weight_in_kilos = 2.)
+    time.sleep(5)
+    tenz.sign_weight(weight_in_kilos = 3.)
+
+    tenz.set_scale(tenz.calc_scale())
+
+    for _ in range(100):
+        print(tenz.get_units())
+
+    tenz.comport.close()
+
 
 if __name__ == '__main__':
-    # calibration_test()
-    tenz_port = TenzSerialPort(5)
-    tenz_port.open()
+    calibration_test()
 
-    tenz_port.tare()
-    print(tenz_port.get_value())
-    tenz_port.set_scale(15)
-    print(tenz_port.get_units())
-
-    tenz_port.close()
 
 
 

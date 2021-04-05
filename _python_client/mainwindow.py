@@ -3,11 +3,12 @@
 
 from typing import List, Tuple, Dict, Optional
 from importlib import reload
+import os
 # import time
 
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QFileDialog, QStatusBar,
-    QListWidgetItem, QErrorMessage, QMessageBox, QPushButton
+    QListWidgetItem, QErrorMessage, QMessageBox, QPushButton, QTableWidget
 )
 from PyQt5 import uic
 # from PyQt5.QtCore import
@@ -16,34 +17,19 @@ from PyQt5.QtNetwork import QTcpSocket
 from commands import Command
 from tcp_client import Connection
 from command_makers import *
-from bt_serial import toggle_arduino_led, open_port_by_name
+from window_misc import update_calibration_table
+from tenz_serial import Tenz
 
 class Window(object):
     def __init__(self):
         app = QApplication([])
-        self.ui = uic.loadUi("mainwindow.ui")
+        ui_path = os.path.dirname(os.path.abspath(__file__))
+        self.ui = uic.loadUi(os.path.join(ui_path, "mainwindow.ui"))
         self.ui.show()
 
         self.conn = None
-        self.ser = None
+        self.tenz = None #сейчас тензодатчик один, но будет много
 
-        #----------вкладка установки соединения и отправки сообщений вручную---------
-        self.ui.send_hex_message_button.clicked.connect(
-            self.send_hex_message)
-        self.ui.connect_button.clicked.connect(
-            self.make_connection)
-        self.ui.disconnect_button.clicked.connect(
-            self.close_connection)
-
-        #-----------------вкладка поиска отправки команд по номеру-----------------
-        self.ui.command_number_spinbox.valueChanged.connect(
-            self.ui.command_name_ledit.clear)
-        self.ui.command_name_ledit.textEdited.connect(
-            self.set_null_in_command_number_spinbox)
-        self.ui.fetch_command_button.clicked.connect(
-            self.fetch_command)
-        self.ui.send_command_button.clicked.connect(
-            self.send_command)
 
         #---------------------вкладка общего раскрытия--------------------------
         self.ui.expand_all_button.clicked.connect(
@@ -87,85 +73,43 @@ class Window(object):
         self.ui.get_all_sensors_values_button.clicked.connect(
             self.get_all_sensors_values)
 
-        #-----------------вкладка показаний тензодатчиков----------------------
-        self.ui.open_comport_button.clicked.connect(
-            self.open_comport)
-        self.ui.arduino_led_on_button.clicked.connect(
-            self.arduino_led_on)
-        self.ui.arduino_led_off_button.clicked.connect(
-            self.arduino_led_off)
+        #-----------------вкладка калибровки тензодатчиков----------------------
+        self.ui.tenz_tare_button.clicked.connect(
+            self.tenz_tare)
+        self.ui.tenz_sign_weight_button.clicked.connect(
+            self.tenz_sign_weight)
+        self.ui.tenz_calibrate_button.clicked.connect(
+            self.tenz_calibrate)
+
+        #-----------------вкладка чтения тензодатчиков----------------------
+        foo = 'bar'
+
+        #----------вкладка установки соединения и отправки сообщений вручную---------
+        self.ui.send_hex_message_button.clicked.connect(
+            self.send_hex_message)
+        self.ui.connect_button.clicked.connect(
+            self.make_connection)
+        self.ui.disconnect_button.clicked.connect(
+            self.close_connection)
+        self.ui.tenz_open_comport_button.clicked.connect(
+            self.tenz_open_comport)
+
+        #-----------------вкладка поиска отправки команд по номеру-----------------
+        self.ui.command_number_spinbox.valueChanged.connect(
+            self.ui.command_name_ledit.clear)
+        self.ui.command_name_ledit.textEdited.connect(
+            self.set_null_in_command_number_spinbox)
+        self.ui.fetch_command_button.clicked.connect(
+            self.fetch_command)
+        self.ui.send_command_button.clicked.connect(
+            self.send_command)
 
         exit(app.exec())
     
-    #------------------------функции для кнопок----------------------
 
-    def make_connection(self):
-        self.conn = Connection()
-        if self.conn.is_refused: return
-        self.ui.ip_adress_label.setText(self.conn.host)
-        self.ui.port_label.setText(str(self.conn.port))
+    #--------------------------------ФУНКЦИИ------------------------------------
 
-    def close_connection(self):
-        if self.conn: self.conn.close()
-        self.conn = None
-        self.ui.ip_adress_label.setText('None')
-        self.ui.port_label.setText('None')
-
-    def send_command(self):
-        command_number = self.ui.command_number_spinbox.value()
-        command = Command(number = command_number)
-        command_param_1_str: str = self.ui.param_1_ledit.text()
-        command_param_2_str: str = self.ui.param_2_ledit.text()
-        info_field_params: Optional[Tuple] = tuple()
-        if command_param_1_str:
-            if not command_param_2_str: 
-                info_field_params = (int(command_param_1_str), )
-            elif command_param_2_str:
-                info_field_params = (
-                    int(command_param_1_str), int(command_param_2_str))
-        message: bytes = command.make_bytes_message(*info_field_params)
-        if not message: return
-        self.ui.message_ledit.setText(str(message))
-        response: bytes = self.conn.send_message(message)
-        self.ui.response_ledit.setText(str(response))
-        is_command_succ = command.check_response(response)
-        self.ui.response_check_label.setText(str(is_command_succ))
-
-    def fetch_command(self):
-        command_number: Optional[int] = None
-        command_name: Optional[str] = None
-        if self.ui.command_number_spinbox.value(): #если значение не ноль
-            command_number = self.ui.command_number_spinbox.value()
-        if self.ui.command_name_ledit.text(): #если строка не пуста
-            command_name = self.ui.command_name_ledit.text()
-        #test None values from line edits
-        command = Command(name = command_name, number = command_number)
-        if command.init_err_info: #in case of a command init error
-            show_error(command.init_err_info)
-            return
-        self.ui.command_number_spinbox.setValue(command.number)
-        self.ui.command_name_ledit.setText(command.name)
-        print('fetch_command func worked')
-        return command
-
-    def set_null_in_command_number_spinbox(self):
-        self.ui.command_number_spinbox.setValue(0)
-
-    def send_hex_message(self):
-        bytes_message_str: str = self.ui.bytes_message_ledit.text()
-        if not bytes_message_str: 
-            show_error('Enter the message first!')
-            return
-        # bytes_message_str: str = '550300000000'
-        print('str_msg:', bytes_message_str)
-        bytes_message: bytes = bytes.fromhex(bytes_message_str)
-        print('bytes_msg:', bytes_message)
-        bytes_response = self.conn.send_message(bytes_message)
-        print('bytes_response:', bytes_response)
-        self.ui.bytes_response_ledit.setText(str(bytes_response))
-
-
-    #----------------функции для общего раскрытия----------------
+    #-----------------------функции для общего раскрытия------------------------
 
     def toggle_expand_all(self):
         button: QPushButton = self.ui.expand_all_button
@@ -349,6 +293,7 @@ class Window(object):
             cmd.name,
             cmd.send_and_check(self.conn, tension_value))
 
+
     #----------функции для показаний датчиков оборотов-------------
 
     def get_sensor_value(self):
@@ -379,42 +324,111 @@ class Window(object):
         sensor_values_tuple = Command(number = 153).decode_response_data(response)
         self.ui.status_label.setText(f'{is_command_succ}, svt: {sensor_values_tuple}')'''
 
-    #----------функции для показаний тензодатчиков -------------
+
+    #------------------функции для показаний тензодатчиков----------------------
+
+    def tenz_open_comport(self):
+        port_number = int(self.ui.tenz_port_name_ledit.text().split('COM')[-1])
+        self.tenz = Tenz(port_number)
+        tenz.comport.open()
+
+    def tenz_tare(self):
+        check_tenz_existence(self.tenz)
+        self.tenz.tare()
+
+    def tenz_sign_weight(self):
+        check_tenz_existence(self.tenz)
+        weight: float = self.ui.tenz_sign_weight_ledit.value()
+        self.tenz.sign_weight(weight)
+        update_calibration_table(
+            self.ui.tenz_calibration_table, self.tenz.calib_dict) #NEED TESTING!
+
+    def tenz_calibrate(self):
+        check_tenz_existence(self.tenz)
+        scale: float = self.tenz.calc_scale()
+        self.tenz.set_scale(scale)
+
+
+    #-------функции для установки соединения и отправки сообщений вручную-------
+
+    def make_connection(self):
+        self.conn = Connection()
+        if self.conn.is_refused: return
+        self.ui.ip_adress_label.setText(self.conn.host)
+        self.ui.port_label.setText(str(self.conn.port))
+
+    def close_connection(self):
+        if self.conn: self.conn.close()
+        self.conn = None
+        self.ui.ip_adress_label.setText('None')
+        self.ui.port_label.setText('None')
+
+    def send_command(self):
+        command_number = self.ui.command_number_spinbox.value()
+        command = Command(number = command_number)
+        command_param_1_str: str = self.ui.param_1_ledit.text()
+        command_param_2_str: str = self.ui.param_2_ledit.text()
+        info_field_params: Optional[Tuple] = tuple()
+        if command_param_1_str:
+            if not command_param_2_str: 
+                info_field_params = (int(command_param_1_str), )
+            elif command_param_2_str:
+                info_field_params = (
+                    int(command_param_1_str), int(command_param_2_str))
+        message: bytes = command.make_bytes_message(*info_field_params)
+        if not message: return
+        self.ui.message_ledit.setText(str(message))
+        response: bytes = self.conn.send_message(message)
+        self.ui.response_ledit.setText(str(response))
+        is_command_succ = command.check_response(response)
+        self.ui.response_check_label.setText(str(is_command_succ))
+
+    def fetch_command(self):
+        command_number: Optional[int] = None
+        command_name: Optional[str] = None
+        if self.ui.command_number_spinbox.value(): #если значение не ноль
+            command_number = self.ui.command_number_spinbox.value()
+        if self.ui.command_name_ledit.text(): #если строка не пуста
+            command_name = self.ui.command_name_ledit.text()
+        #test None values from line edits
+        command = Command(name = command_name, number = command_number)
+        if command.init_err_info: #in case of a command init error
+            show_error(command.init_err_info)
+            return
+        self.ui.command_number_spinbox.setValue(command.number)
+        self.ui.command_name_ledit.setText(command.name)
+        print('fetch_command func worked')
+        return command
+
+    def set_null_in_command_number_spinbox(self):
+        self.ui.command_number_spinbox.setValue(0)
+
+    def send_hex_message(self):
+        bytes_message_str: str = self.ui.bytes_message_ledit.text()
+        if not bytes_message_str: 
+            show_error('Enter the message first!')
+            return
+        # bytes_message_str: str = '550300000000'
+        print('str_msg:', bytes_message_str)
+        bytes_message: bytes = bytes.fromhex(bytes_message_str)
+        print('bytes_msg:', bytes_message)
+        bytes_response = self.conn.send_message(bytes_message)
+        print('bytes_response:', bytes_response)
+        self.ui.bytes_response_ledit.setText(str(bytes_response))
 
     
 
-    def open_comport(self):
-        port_name = self.ui.port_name_ledit.text()
-        self.ser = open_port_by_name(port_name)
-
-    def arduino_led_on(self):
-        if not self.ser:
-            show_error("Open comport first!")
-            return
-        answer, is_succ = toggle_arduino_led(self.ser, True)
-        self.ui.serial_input_ledit.setText(answer)
-        self.ui.statusbar.showMessage(str(is_succ))
-
-    def arduino_led_off(self):
-        if not self.ser:
-            show_error("Open comport first!")
-            return
-        answer, is_succ = toggle_arduino_led(self.ser, False)
-        self.ui.serial_input_ledit.setText(answer)
-        self.ui.statusbar.showMessage(str(is_succ))
-
 
 # -----------------------вспомогательные функции---------------------
-def show_error(text: str):
-    msg = QMessageBox()
-    msg.setIcon(QMessageBox.Critical)
-    msg.setText(text)
-    msg.exec()
+def check_tenz_existence(tenz: Tenz):
+    if not tenz: raise TypeError("Create tenz object first!")
+
 
 '''def reload_modules():
     reload(commands)
     reload(tcp_client)
     reload(command_makers)'''
 
+
 Window() #запуск гуйни
-# window_2 = Window()
+window_2 = Window()
