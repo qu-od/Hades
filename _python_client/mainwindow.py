@@ -4,21 +4,25 @@
 from typing import List, Tuple, Dict, Optional
 from importlib import reload
 import os
-# import time
+import time
+import asyncio
 
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QFileDialog, QStatusBar,
+    QApplication, QWidget, QFileDialog, QStatusBar, QLabel,
     QListWidgetItem, QErrorMessage, QMessageBox, QPushButton, QTableWidget
 )
 from PyQt5 import uic
 # from PyQt5.QtCore import
 from PyQt5.QtNetwork import QTcpSocket
+from PyQt5.QtCore import QTimer
+import matplotlib
 
 from commands import Command
 from tcp_client import Connection
 from command_makers import *
-from window_misc import update_calibration_table
+from window_misc import update_calibration_table, show_error, show_info
 from tenz_serial import Tenz
+from wheels import crop_float
 
 class Window(object):
     def __init__(self):
@@ -82,7 +86,10 @@ class Window(object):
             self.tenz_calibrate)
 
         #-----------------вкладка чтения тензодатчиков----------------------
-        foo = 'bar'
+        self.ui.tenz_start_units_button.clicked.connect(
+            self.tenz_start_units)
+        self.ui.tenz_stop_units_button.clicked.connect(
+            self.tenz_stop_units)
 
         #----------вкладка установки соединения и отправки сообщений вручную---------
         self.ui.send_hex_message_button.clicked.connect(
@@ -330,24 +337,55 @@ class Window(object):
     def tenz_open_comport(self):
         port_number = int(self.ui.tenz_port_name_ledit.text().split('COM')[-1])
         self.tenz = Tenz(port_number)
-        tenz.comport.open()
+        self.tenz.comport.open()
 
     def tenz_tare(self):
-        check_tenz_existence(self.tenz)
+        if not is_tenz(self.tenz): return
         self.tenz.tare()
+        show_info(f"Тензодатчик тарирован.\n" + 
+            "Сейчас он не должен был быть ничем нагружен")
 
     def tenz_sign_weight(self):
-        check_tenz_existence(self.tenz)
-        weight: float = self.ui.tenz_sign_weight_ledit.value()
+        if not is_tenz(self.tenz): return
+
+        # CHANGE LEDIT TO DOUBLE_SPINBOX
+
+        weight: float = float(self.ui.tenz_sign_weight_ledit.text())
         self.tenz.sign_weight(weight)
-        update_calibration_table(
-            self.ui.tenz_calibration_table, self.tenz.calib_dict) #NEED TESTING!
+        table = self.ui.tenz_calibration_table #alias
+        table.insertRow(table.rowCount())
+        update_calibration_table(table, self.tenz.calib_dict)
+        if not self.tenz.calib_dict.are_scales_converge():
+            print("Scales don't converge properly")
+            show_info("Значение множителя не сходится с заданной точностью")
 
     def tenz_calibrate(self):
-        check_tenz_existence(self.tenz)
+        if not is_tenz(self.tenz): return
         scale: float = self.tenz.calc_scale()
         self.tenz.set_scale(scale)
+        show_info(f"Калибровка завершена.\nУстановлен множитель {scale}")
 
+    def tenz_start_units(self):
+        if not is_tenz(self.tenz): return
+        self.tenz_get_units_timer = QTimer()
+        self.tenz_get_units_timer.timeout.connect(self.get_and_show_units)
+        self.tenz_get_units_timer.start(1000)
+
+        '''from graph_widget import MplCanvas
+        sc = MplCanvas(
+            self, self.ui.units_graph_widget)
+        sc.axes.plot([0,1,2,3,4], [10,1,20,3,40])'''
+        # asyncio.run(get_units_n_times(self.tenz, self.ui.tenz_units_label))
+
+    def tenz_stop_units(self):
+        if not is_tenz(self.tenz): return
+        self.tenz_get_units_timer.stop()
+
+    def get_and_show_units(self):
+        if not is_tenz(self.tenz): return
+        units = crop_float(self.tenz.get_units())
+        self.ui.tenz_units_label.setText(f"Вес на ТД1: {units}кг")
+        
 
     #-------функции для установки соединения и отправки сообщений вручную-------
 
@@ -420,8 +458,21 @@ class Window(object):
 
 
 # -----------------------вспомогательные функции---------------------
-def check_tenz_existence(tenz: Tenz):
-    if not tenz: raise TypeError("Create tenz object first!")
+def is_tenz(tenz: Tenz) -> bool:
+    if not tenz: 
+        # raise TypeError("Create tenz object first!")
+        show_error("Серийный порт недоступен!")
+        return False
+    elif tenz:
+        return True
+
+async def get_units_n_times(tenz: Tenz, output_label: QLabel): #NEED TESTING
+    for _ in range(100):
+        await asyncio.sleep(3)
+        if not is_tenz(tenz): return
+        units = crop_float(tenz.get_units())
+        output_label.setText(f"Вес на ТД1: {units}кг")
+        
 
 
 '''def reload_modules():

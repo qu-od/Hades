@@ -12,7 +12,7 @@ print(struct.unpack('=B', b'\x88'))'''
 for test_item in test_list_comprehension:
     print(type_print(test_item ))'''
 
-test_dict = {1:(11, 111), 2:(22, 222), 3: (33, 333)}
+'''test_dict = {1:(11, 111), 2:(22, 222), 3: (33, 333)}
 print(type(test_dict))
 print(len(test_dict))
 
@@ -20,7 +20,7 @@ print(test_dict.pop(2))
 print(len(test_dict))
 
 for val_1, val_2 in test_dict.values():
-    print(val_1, '---', val_2)
+    print(val_1, '---', val_2)'''
 
 '''from tenz_serial import CalibrationDict
 test_caldict = CalibrationDict()
@@ -31,5 +31,26 @@ print(test_caldict)
 test_caldict.clear_all_calibration_pairs()
 print(test_caldict)'''
 
-td = {}
+'''td = {1: 1}
 print(bool(td))
+print(len(td))'''
+
+# print(float("34.65") + 23)
+
+'''for i in range(0): print(i)
+
+test_mapping = map(int, ('1', '2', '3'))
+
+print(enumerate((1, 2, 43)))
+print(max((1, 2.3, 3.4)))
+
+
+new_val = float("{:.2f}".format(5.23456789078))
+print(new_val)'''
+
+
+from tenz_serial import Tenz
+test_tenz = Tenz(17)
+test_tenz.comport.open()
+test_tenz.comport.read_line()
+test_tenz.comport.close()

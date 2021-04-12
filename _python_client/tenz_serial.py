@@ -5,6 +5,8 @@ import time
 import serial.tools.list_ports as list_serials
 import serial
 
+from wheels import crop_float
+
 '''def toggle_arduino_led(ser: serial.Serial, is_turn_on: bool) -> Tuple[str, bool]:
     # compatible with bt_test.ino program
     ser.write(b'1') if is_turn_on else ser.write(b'0')
@@ -87,7 +89,7 @@ class CalibrationDict(dict):
 
     def add_calibration_pair(self, weight: float, value: float):
         calib_pairs_number = self.__len__()
-        self[calib_pairs_number+1] = weight, value
+        self[calib_pairs_number] = weight, value #STARTING KEYS FROM ZERO
         print('Calibration pair added')
 
     def clear_all_calibration_pairs(self):
@@ -99,10 +101,20 @@ class CalibrationDict(dict):
         deleted_pair: tuple = self.pop(calib_pairs_number)
         print("Deleted calibration pair is", deleted_pair)
 
-    def dumb_mean_scale_for_tenz(self) -> float:
-        scales: list = [value / weight for weight, value in self.values()]
+    def dumb_scales_tuple_for_tenz(self) -> Tuple[float]:
+        scales = tuple([value / weight for weight, value in self.values()])
         # мышца "а почему-бы и нет" прокачана
-        return sum(scales) / len(scales)
+        return scales
+
+    def dumb_mean_scale_for_tenz(self) -> float:
+        scales = self.dumb_scales_tuple_for_tenz()
+        return crop_float(sum(scales) / len(scales))
+
+    def are_scales_converge(self, convergence_rate: float = 0.9) -> bool:
+        scales = self.dumb_scales_tuple_for_tenz()
+        min_to_max_scale_ratio: float = min(scales) / max(scales)
+        print("Scale convergence rate =", min_to_max_scale_ratio)
+        return min_to_max_scale_ratio > convergence_rate
 
 
 #---------------------------------TENZ CLASS ITSELF-----------------------------
@@ -142,7 +154,9 @@ class Tenz(object):
         if not self.calib_dict: 
             print("Calibration dict is empty! Can't calculate scale for tenz.")
             return
-        return self.calib_dict.dumb_mean_scale_for_tenz()
+        scale = self.calib_dict.dumb_mean_scale_for_tenz()
+        print("Scale calculated:", scale)
+        return scale
 
     #---------------------------command methods---------------------------------
     def tare(self):

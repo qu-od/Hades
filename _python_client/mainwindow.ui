@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>678</width>
-    <height>572</height>
+    <width>750</width>
+    <height>586</height>
    </rect>
   </property>
   <property name="font">
@@ -55,7 +55,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>4</number>
+       <number>5</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -558,21 +558,41 @@
         </item>
         <item row="2" column="0" colspan="2">
          <widget class="QTableWidget" name="tenz_calibration_table">
+          <property name="lineWidth">
+           <number>1</number>
+          </property>
           <property name="rowCount">
            <number>1</number>
           </property>
           <property name="columnCount">
-           <number>2</number>
+           <number>3</number>
           </property>
+          <attribute name="horizontalHeaderDefaultSectionSize">
+           <number>130</number>
+          </attribute>
+          <attribute name="horizontalHeaderMinimumSectionSize">
+           <number>30</number>
+          </attribute>
+          <attribute name="verticalHeaderDefaultSectionSize">
+           <number>34</number>
+          </attribute>
+          <attribute name="verticalHeaderMinimumSectionSize">
+           <number>23</number>
+          </attribute>
           <row/>
           <column>
            <property name="text">
-            <string>Масса груза</string>
+            <string>Масса груза [кг]</string>
            </property>
           </column>
           <column>
            <property name="text">
             <string>Уровень сигнала</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Множитель [1/кг]</string>
            </property>
           </column>
          </widget>
@@ -585,24 +605,24 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_18">
         <item row="2" column="0" colspan="2">
-         <widget class="QPushButton" name="pushButton_5">
+         <widget class="QPushButton" name="tenz_stop_units_button">
           <property name="text">
            <string>Остановить чтение</string>
           </property>
          </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QLabel" name="label_14">
+         <widget class="QLabel" name="tenz_units_label">
           <property name="text">
-           <string>Вес на ТД1: 0 кг</string>
+           <string>Вес на ТД1: 0кг</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QWidget" name="widget" native="true"/>
+         <widget class="QWidget" name="units_graph_widget" native="true"/>
         </item>
         <item row="0" column="0" colspan="2">
-         <widget class="QPushButton" name="pushButton_4">
+         <widget class="QPushButton" name="tenz_start_units_button">
           <property name="text">
            <string>Начать чтение</string>
           </property>
@@ -709,7 +729,7 @@
            <item row="0" column="1">
             <widget class="QLineEdit" name="tenz_port_name_ledit">
              <property name="text">
-              <string>COM7</string>
+              <string>COM16</string>
              </property>
             </widget>
            </item>
@@ -856,7 +876,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>678</width>
+     <width>750</width>
      <height>21</height>
     </rect>
    </property>

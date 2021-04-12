@@ -1,6 +1,6 @@
 #include "HX711.h"
-#define dt 7
 #define sck 6
+#define dt 7
 HX711 tenz;
 using namespace std;
 

@@ -1,3 +1,5 @@
+from typing import Tuple, List, Optional
+
 from PyQt5.QtWidgets import (
     QWidget, QMessageBox, QTableWidget, QTableWidgetItem
 )
@@ -8,6 +10,12 @@ from tenz_serial import Tenz
 def show_error(text: str):
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Critical)
+    msg.setText(text)
+    msg.exec()
+
+def show_info(text: str):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Information)
     msg.setText(text)
     msg.exec()
 
@@ -39,11 +47,16 @@ def set_all_motor_buttons_to_default(ui):
 
 def update_calibration_table(
         calib_table: QTableWidget, calib_dict):
-    calib_table.clear()
-    for i in range(calib_dict.values()):
+    calib_table.clearContents()
+    for i in range(len(calib_dict)):
         weight, value = calib_dict[i]
-        weight_twi = QTableWidgetItem(str(weight))
+        scale = value / weight
+        set_row_with_floats_tuple(calib_table, i, weight, value, scale)
+
+def set_row_with_floats_tuple(
+        table: QTableWidget, row_number: int, *values: Tuple[float]):
+    for i, value in enumerate(values):
         value_twi = QTableWidgetItem(str(value))
-        calib_table.insertRow(i)
-        calib_table.setItem(i, 1, weight_twi)
-        calib_table.setItem(i, 1, value_twi)
+        table.setItem(row_number, i, value_twi)
+
+
