@@ -30,11 +30,19 @@ void loop() {
 
 
   if (voltage < 1.0) {
+<<<<<<< HEAD
     digitalWrite(out_pin, HIGH);
+=======
+    digitalWrite(out_pin, 64);
+>>>>>>> 0031ee2c38d3d66e4bd6300a4095b862a8a0a790
   }
   if (voltage > 3.0) {
     digitalWrite(out_pin, LOW);
   }
 
+<<<<<<< HEAD
   delay(1000);
+=======
+  //delay(5);
+>>>>>>> 0031ee2c38d3d66e4bd6300a4095b862a8a0a790
 }
