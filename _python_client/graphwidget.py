@@ -1,21 +1,83 @@
+# ДАННЫЙ МОДУЛЬ СЕЙЧАС ИМПОРТИРУЕТСЯ В МАЙННЕЯВНО
+    # С ПОМОЩЬЮ МЕТОДА PROMOTE_WIDGET В QT_DESIGNER
+
 import sys
+import random
+from typing import List, Tuple, Dict, Optional
+
 import matplotlib
 matplotlib.use('Qt5Agg')
 
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtWidgets import (QDialog, QApplication, QPushButton,
+    QVBoxLayout, QWidget)
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+import pyqtgraph as pg
+from pyqtgraph import PlotWidget, plot
+
+class GraphWidget(PlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def my_test_method(self):
+        print("my_test_method WORKED")
+
+
+
+#--------------------MATPLOTLIB OPTIONS-------------------------
+
+'''# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+import matplotlib.pyplot as plt
+
+class GraphWidget(QWidget):
+    def __init__(self, parent=None):
+        super(GraphWidget, self).__init__(parent)
+
+        self.figure = plt.figure()
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)
+
+        self.ax = self.figure.add_subplot(111)
+        self.ax.plot([1]*10) #initial content to show
+        self.canvas.draw()
 
 
-class MplCanvas(FigureCanvasQTAgg):
+        layout = QVBoxLayout()
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+        
+
+        # Just some button connected to `plot` method
+        # self.button = QPushButton('Plot')
+        # self.button.clicked.connect(self.update_plot)
+        # layout.addWidget(self.button)
+
+        print("init worked")
+
+    def create_plot(self):
+        self.ax = self.figure.add_subplot(111)
+        self.ax.plot([1]*10) #initial content to show
+        self.canvas.draw()
+        print("create plot REALLY worked")
+
+    def update_plot(self, data: List[Tuple[float, float]]):
+        data = [random.random() for i in range(10)]
+        self.figure.clear()
+        self.ax.plot(data, '*-')
+        self.canvas.draw()'''
+
+
+'''class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, parent, width=5, height=4, dpi=100):
         # fig = Figure(figsize=(width, height), dpi=dpi)
         fig = Figure()
         self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
-
+        # super(MplCanvas, self).__init__(fig)'''
 
 '''class MainWindow(QtWidgets.QMainWindow):
 
@@ -79,3 +141,7 @@ app.exec_()'''
 
         # Trigger the canvas to update and redraw.
         self.canvas.draw()'''
+
+
+
+

@@ -1,8 +1,16 @@
 Qt_cpp_test/
 _документы/
+проч/
+рисунки/
 _python_client/__pycache__
 _python_client/доки от Федора
 _python_client/examples
 _python_client/pybluez_test
 _python_client/expansion.code-workspace
 _python_client/LY_Expansion.code-workspace
+_python_client/logs/
+Закупка тензодатчиков.docx
+Пояснения к беспроводному ТД.docx
+К155ТЛ2 datasheet.pdf
+датчик до зарядной платы.spl7
+.vscode/

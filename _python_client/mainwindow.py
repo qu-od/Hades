@@ -1,28 +1,27 @@
 # developed by Andrey Rahimov. Organisation:SDIMPI
-# command protocol provided by Fedya
+# command protocol partially provided by Fedya
 
 from typing import List, Tuple, Dict, Optional
 from importlib import reload
 import os
 import time
-import asyncio
 
+from PyQt5 import uic
+from PyQt5.QtNetwork import QTcpSocket
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QFileDialog, QStatusBar, QLabel,
     QListWidgetItem, QErrorMessage, QMessageBox, QPushButton, QTableWidget
 )
-from PyQt5 import uic
-# from PyQt5.QtCore import
-from PyQt5.QtNetwork import QTcpSocket
-from PyQt5.QtCore import QTimer
-import matplotlib
 
 from commands import Command
 from tcp_client import Connection
 from command_makers import *
 from window_misc import update_calibration_table, show_error, show_info
-from tenz_serial import Tenz
+from tenz_serial import Tenz, ComPortUtils
+from dataclasses import WeightPoint, WeightTimeline
 from wheels import crop_float
+
 
 class Window(object):
     def __init__(self):
@@ -33,7 +32,6 @@ class Window(object):
 
         self.conn = None
         self.tenz = None #сейчас тензодатчик один, но будет много
-
 
         #---------------------вкладка общего раскрытия--------------------------
         self.ui.expand_all_button.clicked.connect(
@@ -335,8 +333,12 @@ class Window(object):
     #------------------функции для показаний тензодатчиков----------------------
 
     def tenz_open_comport(self):
-        port_number = int(self.ui.tenz_port_name_ledit.text().split('COM')[-1])
-        self.tenz = Tenz(port_number)
+        text: str = self.ui.tenz_port_name_ledit.text()
+        if not text:
+            self.tenz = Tenz() #автопоиск порта
+        elif text:
+            port_number = int(text.split('COM')[-1])
+            self.tenz = Tenz(comport_number = port_number)
         self.tenz.comport.open()
 
     def tenz_tare(self):
@@ -369,22 +371,41 @@ class Window(object):
         if not is_tenz(self.tenz): return
         self.tenz_get_units_timer = QTimer()
         self.tenz_get_units_timer.timeout.connect(self.get_and_show_units)
-        self.tenz_get_units_timer.start(1000)
 
-        '''from graph_widget import MplCanvas
-        sc = MplCanvas(
-            self, self.ui.units_graph_widget)
-        sc.axes.plot([0,1,2,3,4], [10,1,20,3,40])'''
-        # asyncio.run(get_units_n_times(self.tenz, self.ui.tenz_units_label))
+        client_reading_timer_delay: int = 10 #ВЫВЕСТИ В ОКНО
+        server_reading_timer_delay: int = \
+            int(client_reading_timer_delay * (3 / 4))
+        print("ARDUINO DELAY WAS SET AS:")
+        print(self.tenz.set_loop_delay(server_reading_timer_delay))
 
-    def tenz_stop_units(self):
-        if not is_tenz(self.tenz): return
-        self.tenz_get_units_timer.stop()
+        self.tenz_get_units_timer.start(client_reading_timer_delay)
+
+        times_to_measur: int = 1 #ВЫВЕСТИ В ОКНО
+        print("ARDUINO TIMES_TO_MEASUR SET AS:")
+        print(self.tenz.set_times_to_measur(times_to_measur))
+
+        self.weight_timeline = WeightTimeline()
+
 
     def get_and_show_units(self):
         if not is_tenz(self.tenz): return
         units = crop_float(self.tenz.get_units())
-        self.ui.tenz_units_label.setText(f"Вес на ТД1: {units}кг")
+        
+        new_weight_point = WeightPoint(time.time(), units)
+        self.weight_timeline.append_point(new_weight_point)
+        self.ui.units_graph_gview.clear()
+        self.ui.units_graph_gview.plot(*self.weight_timeline.get_lists_for_plot())
+
+        self.ui.tenz_units_label.update(units)
+        
+        #ВСТАВИТЬ ГРАФИК В ОКНО
+
+
+    def tenz_stop_units(self):
+        if not is_tenz(self.tenz): return
+        self.tenz_get_units_timer.stop()
+        self.weight_timeline.__del__() #closes logfile #NEED TESTING
+
         
 
     #-------функции для установки соединения и отправки сообщений вручную-------
@@ -482,4 +503,4 @@ async def get_units_n_times(tenz: Tenz, output_label: QLabel): #NEED TESTING
 
 
 Window() #запуск гуйни
-window_2 = Window()
+# window_2 = Window()

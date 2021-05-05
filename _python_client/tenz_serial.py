@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict, Optional
 import struct
 import time
+import winreg
 
 import serial.tools.list_ports as list_serials
 import serial
@@ -17,16 +18,9 @@ from wheels import crop_float
     if (is_turn_on == False) and (answer is "LED: OFF"): is_succ = True        
     return answer, is_succ'''
 
-def get_comports_list():
-    port_list = list_serials.comports(include_links=False)
-    print("------- Here are the ports -------")
-    for port in port_list: print(port)
-    return port_list
-
-
 #--------------------------------CLASSES FOR TENZ----------------------------------
 
-class ComPort(object):
+class ComPort():
     def __init__(self, comport_number: int, name: str = None, baudrate: int = 19200):
         self._ser: Optional[serial.Serial] = None
         self._number: int = comport_number
@@ -52,6 +46,7 @@ class ComPort(object):
         if self._ser: 
             self._ser.close()
             self._ser = None
+            # self = None #NEED HUGE TESTING
             print(f'{self} closed ___/')
         else: 
             print(f'{self} already has been closed.')
@@ -78,6 +73,54 @@ class ComPort(object):
         line: str = self._ser.readline().decode("utf-8")
         print(f'--- FROM {self} --- :', line[:-1])
         return line
+
+
+class ComPortUtils(): #NEED TESTING #есть костыли
+    def __init__(self):
+        self.info = "Service functions for comports setup"
+
+    def get_comports_list(self):
+        port_list = list_serials.comports(include_links=False)
+        print("------- Here are the ports -------")
+        for port in port_list: print(port)
+        return port_list
+    
+    def _print_some_comport_info(self, comport):
+        print("\n_________NEW_COMPORT_____________")
+        print(comport.name)
+        print(comport.hwid)
+
+    def _print_comports_info_and_get_outgoing_ports(self):
+        port_list = list(list_serials.comports())
+        outgoing_ports = []
+        for port in port_list:
+            # self._print_some_comport_info(port)
+            if port.hwid.endswith("C00000000"): 
+                # print(f"Looks like {port.name} it's outgoing")
+                outgoing_ports.append(port)
+        return outgoing_ports
+    
+    def find_tenz_comport_number_in_comports(self) -> int:
+        outgoing_ports = self._print_comports_info_and_get_outgoing_ports()
+        if len(outgoing_ports) == 0:
+            print("No suitable ports found!")
+            return
+        elif len(outgoing_ports) == 1:
+            print("Outgoing port has been found")
+            outgoing_port_number: int = int(outgoing_ports[0].name.split("COM")[-1])
+            return outgoing_port_number
+        elif len(outgoing_ports) > 1:
+            print("Cannot pick particular outgoing port! There are too many")
+            return
+
+    def get_ports_by_spp_dev_presence(self):
+        #NEED IMPLEMENTING
+        # needs a reg key (use winreg module)
+        key_path = (R"Компьютер\HKEY_LOCAL_MACHINE\\SYSTEM\CurrentControlSet" +
+                "\Enum\BTHENUM\Dev_002113002876"+
+                "\\7&13438a0b&1&BluetoothDevice_002113002876")
+        key_name = "FriendlyName"
+        pass
 
 
     #-------------------------CALIBRATION PAIR CLASS----------------------------
@@ -119,9 +162,14 @@ class CalibrationDict(dict):
 
 #---------------------------------TENZ CLASS ITSELF-----------------------------
 
-class Tenz(object):
+class Tenz():
 
-    def __init__(self, comport_number: int):
+    def __init__(self, comport_number: Optional[int] = None):
+        if not comport_number:
+            print("Automated port search attempt...")
+            print("\tIf you need to fetch multiple tenz ports, use other methods!")
+            #NEED TESTING
+            comport_number = ComPortUtils().find_tenz_comport_number_in_comports() 
         self.comport = ComPort(comport_number)
         self.header: int = 42 #key for tenz commands
         self.calib_dict = CalibrationDict()
@@ -173,8 +221,13 @@ class Tenz(object):
         units: float = self.exec_command(3)
         return units
 
-    def set_loop_delay(self):
-        pass
+    def set_loop_delay(self, delay: int) -> int:
+        delay_echo: float = self.exec_command(4, float(delay))
+        return int(delay_echo)
+
+    def set_times_to_measur(self, times_to_measur: int) -> int:
+        times_to_measur_echo: float = self.exec_command(5, float(times_to_measur))
+        return int(times_to_measur_echo)
 
     def flush_arduino_serial_buffer_input_and_output(self):
         pass
@@ -206,7 +259,7 @@ class Tenz(object):
 
 
 #-----------------------------------MAIN FOR TESTING-------------------------------------
-def calibration_test():
+def calibration_test(): #outdated
     tenz = Tenz(11)
     tenz.comport.open()
 
@@ -228,9 +281,7 @@ def calibration_test():
 
 
 if __name__ == '__main__':
-    calibration_test()
-
-
-
-
-
+    tenz = Tenz()
+    tenz.comport.open()
+    for _ in range(100):
+        print(tenz.comport.read_line())

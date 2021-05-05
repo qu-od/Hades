@@ -49,8 +49,24 @@ new_val = float("{:.2f}".format(5.23456789078))
 print(new_val)'''
 
 
-from tenz_serial import Tenz
-test_tenz = Tenz(17)
+'''from tenz_serial import Tenz
+test_tenz = Tenz(12)
 test_tenz.comport.open()
 test_tenz.comport.read_line()
-test_tenz.comport.close()
+test_tenz.comport.close()'''
+
+'''test_dict = dict(enumerate(list(range(10))))
+for test_key in test_dict.keys():
+    print(test_key)'''
+
+print("SPP Dev".encode("utf-8").hex())
+
+import logging as log
+log.warning("warning_text")
+log.info("info_text")
+
+import pathlib
+dir_path_str = pathlib.Path(__file__).parent.absolute()
+# F = open(f"{dir_path_str}\\05/05/21 19:26_weights_expansion.log", 'w')
+F = open(f"{dir_path_str}\\00.00.00 19-26_weights_expansion.log", "w")
+F.write("test")
