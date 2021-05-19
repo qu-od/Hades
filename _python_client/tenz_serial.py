@@ -21,11 +21,10 @@ from wheels import crop_float
 #--------------------------------CLASSES FOR TENZ----------------------------------
 
 class ComPort():
-    def __init__(self, comport_number: int, name: str = None, baudrate: int = 19200):
+    def __init__(self, comport_number: int, baudrate: int = 19200):
         self._ser: Optional[serial.Serial] = None
         self._number: int = comport_number
         self._baudrate: int = baudrate
-        self.name: Optional[str] = name
 
     def __str__(self): return f"PORT COM-{self._number}" #to ease debug messages
     
@@ -90,37 +89,48 @@ class ComPortUtils(): #NEED TESTING #есть костыли
         print(comport.name)
         print(comport.hwid)
 
-    def _print_comports_info_and_get_outgoing_ports(self):
-        port_list = list(list_serials.comports())
-        outgoing_ports = []
-        for port in port_list:
-            # self._print_some_comport_info(port)
-            if port.hwid.endswith("C00000000"): 
-                # print(f"Looks like {port.name} it's outgoing")
-                outgoing_ports.append(port)
-        return outgoing_ports
-    
-    def find_tenz_comport_number_in_comports(self) -> int:
-        outgoing_ports = self._print_comports_info_and_get_outgoing_ports()
-        if len(outgoing_ports) == 0:
-            print("No suitable ports found!")
-            return
-        elif len(outgoing_ports) == 1:
-            print("Outgoing port has been found")
-            outgoing_port_number: int = int(outgoing_ports[0].name.split("COM")[-1])
-            return outgoing_port_number
-        elif len(outgoing_ports) > 1:
-            print("Cannot pick particular outgoing port! There are too many")
-            return
-
-    def get_ports_by_spp_dev_presence(self):
-        #NEED IMPLEMENTING
-        # needs a reg key (use winreg module)
+    def get_names_and_ports_from_registry(self):
+        reg_root_key = winreg.HKEY_CLASSES_ROOT
+        reg_handle = winreg.CreateKey(reg_root_key)
+        print("REG HANDLE WORKED:", reg_handle)
+        
         key_path = (R"Компьютер\HKEY_LOCAL_MACHINE\\SYSTEM\CurrentControlSet" +
                 "\Enum\BTHENUM\Dev_002113002876"+
                 "\\7&13438a0b&1&BluetoothDevice_002113002876")
         key_name = "FriendlyName"
-        pass
+        tenz_names_list: List[str] = []
+        port_numbers_list: List[int] = []
+
+        return tenz_names_list, port_numbers_list
+
+    def get_tenz_comports_numbers(self) -> List[int]: #NEED TESTING
+        port_list = list(list_serials.comports())
+        outgoing_ports_numbers = []
+        for port in port_list:
+            # self._print_some_comport_info(port)
+            if port.hwid.endswith("C00000000"): 
+                # print(f"Looks like {port.name} it's outgoing")
+                outgoing_ports_numbers.append(port.name.split("COM")[-1])
+        if len(outgoing_ports_numbers) == 0:
+            print("No suitable ports found!")
+            return
+        elif len(outgoing_ports_numbers) > 0:
+            print(f"{len(outgoing_ports_numbers)} outgoing ports have been found")
+            print("Вот они, слева направо:", outgoing_ports_numbers)
+            return outgoing_ports_numbers
+    
+    def find_tenz_comport_number(self) -> int: #DEPRECATED
+        outgoing_ports_numbers = self.get_outgoing_ports_numbers()
+        if len(outgoing_ports_numbers) == 0:
+            print("No suitable ports found!")
+            return
+        elif len(outgoing_ports_numbers) == 1:
+            print("Outgoing port has been found")
+            outgoing_port_number: int = int(outgoing_ports_numbers[0].name.split("COM")[-1])
+            return outgoing_port_number
+        elif len(outgoing_ports) > 1:
+            print("Cannot pick particular outgoing port! There are too many")
+            return
 
 
     #-------------------------CALIBRATION PAIR CLASS----------------------------
@@ -164,14 +174,12 @@ class CalibrationDict(dict):
 
 class Tenz():
 
-    def __init__(self, comport_number: Optional[int] = None):
-        if not comport_number:
-            print("Automated port search attempt...")
-            print("\tIf you need to fetch multiple tenz ports, use other methods!")
-            #NEED TESTING
-            comport_number = ComPortUtils().find_tenz_comport_number_in_comports() 
+    def __init__(self, tenz_name: str, comport_number: int):
+        # tenz_name format: "TN" (T in latin, N is a tenz_number)
         self.comport = ComPort(comport_number)
-        self.header: int = 42 #key for tenz commands
+        self.protocol_key: int = 42 #key for tenz commands. Could be secured
+        self.tenz_name: str = tenz_name
+        self.tenz_number: int = int(tenz_name.split('T')[-1])
         self.calib_dict = CalibrationDict()
 
     def exec_command(
@@ -180,7 +188,7 @@ class Tenz():
         #now size of data_value is 4 bytes (signed int)
         #data_value must be an optional field to make most commands 3 times shorter 
         self.comport.write_bytes(
-            struct.pack('=2Bf', self.header, command_number, data_value)
+            struct.pack('=2Bf', self.protocol_key, command_number, data_value)
         )
 
         response_tuple: Tuple[int, int, float]
@@ -242,20 +250,26 @@ class Tenz():
 
 #--------------------------------MULTIPLE PORTS CLASS----------------------------------
 
-'''class TenzList(list):
-    def __init__(self, *ports):
-        pass
-        self.ports: list = list(ports)
+class Tenzes(dict):
+    # TENZ_NAME is the key
+    # TENZ is the value
+    def __init__(self, port_numbers_list: Optional[List[int]] = None):
+        if not port_numbers_list:
+            print("Attempting to search all ports automaticly...")
+            # port_numbers_list = ComPortUtils().get_tenz_comports_numbers() 
+            tenz_names_list, port_numbers_list = \
+                ComPortUtils().get_names_and_ports_from_registry()
+        for port_number in zip(tenz_names_list, port_numbers_list):
+            
+            # mind the difference between the tenz_number and the port_number
+            self[tenz_number] = Tenz(tenz_name, port_number) #NEED TESTING
 
-    def read_ports_simultaneously(*comports_names):
-        pass
-        ser_list = [serial.Serial(comport_name) 
-            for comport_name in comports_names]
-        for ser in ser_list: print(ser)
-        for _ in range(100):
-            read_line_from_serial(ser_list[0])
-            read_line_from_serial(ser_list[1])
-        # map(read_line_from_serial, ser_list)'''
+    def open_ports_of_all_tenzes(self):
+        for tenz in self: tenz.comport.open()
+
+    def close_ports_of_all_tenzes(self):
+        for tenz in self: tenz.comport.close()
+
 
 
 #-----------------------------------MAIN FOR TESTING-------------------------------------

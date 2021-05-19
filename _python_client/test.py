@@ -59,7 +59,7 @@ test_tenz.comport.close()'''
 for test_key in test_dict.keys():
     print(test_key)'''
 
-print("SPP Dev".encode("utf-8").hex())
+'''print("SPP Dev".encode("utf-8").hex())
 
 import logging as log
 log.warning("warning_text")
@@ -68,5 +68,23 @@ log.info("info_text")
 import pathlib
 dir_path_str = pathlib.Path(__file__).parent.absolute()
 # F = open(f"{dir_path_str}\\05/05/21 19:26_weights_expansion.log", 'w')
-F = open(f"{dir_path_str}\\00.00.00 19-26_weights_expansion.log", "w")
-F.write("test")
+F = open(f"{dir_path_str}\\00.00.00 00-00_test.log", "w")
+F.write("test")'''
+
+print("Сделать свои обертки для классов")
+
+import winreg
+reg_root_key = winreg.HKEY_CLASSES_ROOT
+
+reg_handle = winreg.CreateKey(reg_root_key)
+print("REG HANDLE WORKED:", reg_handle)
+
+levels = [
+    "HKEY_LOCAL_MACHINE",
+    "SYSTEM", 
+    "CurrentControlSet",
+    "Enum",
+    "BTHENUM"
+]
+
+for 

@@ -18,7 +18,7 @@ from commands import Command
 from tcp_client import Connection
 from command_makers import *
 from window_misc import update_calibration_table, show_error, show_info
-from tenz_serial import Tenz, ComPortUtils
+from tenz_serial import Tenz, Tenzes, ComPortUtils
 from dataclasses import WeightPoint, WeightTimeline
 from wheels import crop_float
 
@@ -31,7 +31,24 @@ class Window(object):
         self.ui.show()
 
         self.conn = None
-        self.tenz = None #сейчас тензодатчик один, но будет много
+        # self.tenz = None #deprecated
+        self.tenzes = None
+
+        self.tenz_labels = [ #NEED HUGE TESTING
+            self.ui.tenz_units_label_1,
+            self.ui.tenz_units_label_2,
+            self.ui.tenz_units_label_3,
+            self.ui.tenz_units_label_4,
+            self.ui.tenz_units_label_5,
+        ]
+
+        self.tenz_checkboxes = [
+            self.ui.tenz_checkbox_1,
+            self.ui.tenz_checkbox_2,
+            self.ui.tenz_checkbox_3,
+            self.ui.tenz_checkbox_4,
+            self.ui.tenz_checkbox_5,
+        ]
 
         #---------------------вкладка общего раскрытия--------------------------
         self.ui.expand_all_button.clicked.connect(
@@ -96,8 +113,10 @@ class Window(object):
             self.make_connection)
         self.ui.disconnect_button.clicked.connect(
             self.close_connection)
-        self.ui.tenz_open_comport_button.clicked.connect(
-            self.tenz_open_comport)
+        self.ui.tenz_open_comports_button.clicked.connect(
+            self.tenz_open_comports)
+        self.ui.tenz_close_comports_button.clicked.connect(
+            self.tenz_close_comports)
 
         #-----------------вкладка поиска отправки команд по номеру-----------------
         self.ui.command_number_spinbox.valueChanged.connect(
@@ -332,14 +351,23 @@ class Window(object):
 
     #------------------функции для показаний тензодатчиков----------------------
 
-    def tenz_open_comport(self):
+    def tenz_open_comports(self):
         text: str = self.ui.tenz_port_name_ledit.text()
         if not text:
-            self.tenz = Tenz() #автопоиск порта
+            # self.tenz = Tenz() #автопоиск порта #deprecated
+            self.tenzes = Tenzes()
         elif text:
-            port_number = int(text.split('COM')[-1])
-            self.tenz = Tenz(comport_number = port_number)
-        self.tenz.comport.open()
+            port_numbers_list = list(map(int, text.split(', ')))
+            self.tenzes = Tenzes(port_numbers_list)
+        self.tenzes.open_ports_of_all_tenzes()
+
+    def tenz_close_comports(self):
+        if not is_tenzes(self.tenzes): return
+        self.tenzes.close_ports_of_all_tenzes()
+        print("Ports closed")
+        show_info("Ports closed")
+        del self.tenzes
+        self.tenzes = None
 
     def tenz_tare(self):
         if not is_tenz(self.tenz): return
@@ -396,10 +424,9 @@ class Window(object):
         self.ui.units_graph_gview.clear()
         self.ui.units_graph_gview.plot(*self.weight_timeline.get_lists_for_plot())
 
-        self.ui.tenz_units_label.update(units)
+        for i, label in enumerate(self.tenz_labels):
+            label.update(units + 0 * i) #TEST
         
-        #ВСТАВИТЬ ГРАФИК В ОКНО
-
 
     def tenz_stop_units(self):
         if not is_tenz(self.tenz): return
@@ -487,9 +514,18 @@ def is_tenz(tenz: Tenz) -> bool:
     elif tenz:
         return True
 
+def is_tenzes(tenzes: Tenzes) -> bool:
+    if not tenzes: 
+        # raise TypeError("Create Tenzes object first!")
+        print("There is no tenzes")
+        show_error("Серийный порты недоступны!")
+        return False
+    elif tenzes:
+        return True
+
 async def get_units_n_times(tenz: Tenz, output_label: QLabel): #NEED TESTING
     for _ in range(100):
-        await asyncio.sleep(3)
+        # await asyncio.sleep(3)
         if not is_tenz(tenz): return
         units = crop_float(tenz.get_units())
         output_label.setText(f"Вес на ТД1: {units}кг")

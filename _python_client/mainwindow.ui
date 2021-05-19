@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>750</width>
-    <height>586</height>
+    <width>849</width>
+    <height>579</height>
    </rect>
   </property>
   <property name="font">
@@ -604,28 +604,91 @@
         <string>Чтение ТД</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_18">
-        <item row="2" column="0" colspan="2">
-         <widget class="QPushButton" name="tenz_stop_units_button">
+        <item row="3" column="1">
+         <widget class="UnitsWidget" name="tenz_units_label_3">
           <property name="text">
-           <string>Остановить чтение</string>
+           <string>l 3</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="0" colspan="2">
+        <item row="4" column="1">
+         <widget class="UnitsWidget" name="tenz_units_label_4">
+          <property name="text">
+           <string>l 4</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="tenz_checkbox_1">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QCheckBox" name="tenz_checkbox_5">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="tenz_checkbox_2">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QCheckBox" name="tenz_checkbox_3">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QCheckBox" name="tenz_checkbox_4">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="4">
          <widget class="QPushButton" name="tenz_start_units_button">
           <property name="text">
            <string>Начать чтение</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
-         <widget class="UnitsWidget" name="tenz_units_label">
+        <item row="7" column="0" colspan="4">
+         <widget class="QPushButton" name="tenz_stop_units_button">
           <property name="text">
-           <string>___</string>
+           <string>Остановить чтение</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
+         <widget class="UnitsWidget" name="tenz_units_label_1">
+          <property name="text">
+           <string>l 1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="UnitsWidget" name="tenz_units_label_2">
+          <property name="text">
+           <string>l 2</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="UnitsWidget" name="tenz_units_label_5">
+          <property name="text">
+           <string>l 5</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3" rowspan="5">
          <widget class="GraphWidget" name="units_graph_gview"/>
         </item>
        </layout>
@@ -720,9 +783,9 @@
           </property>
           <layout class="QGridLayout" name="gridLayout_17">
            <item row="0" column="0">
-            <widget class="QPushButton" name="tenz_open_comport_button">
+            <widget class="QPushButton" name="tenz_open_comports_button">
              <property name="text">
-              <string>Open comport</string>
+              <string>Open comports</string>
              </property>
             </widget>
            </item>
@@ -732,7 +795,14 @@
               <string/>
              </property>
              <property name="placeholderText">
-              <string>для автопоиска порта оставьте поле пустым</string>
+              <string>Оставте пустым для автопоиска. Либо вводите номера (2, 5, 10)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QPushButton" name="tenz_close_comports_button">
+             <property name="text">
+              <string>Close comports</string>
              </property>
             </widget>
            </item>
@@ -879,7 +949,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>750</width>
+     <width>849</width>
      <height>21</height>
     </rect>
    </property>
