@@ -6,9 +6,9 @@ from importlib import reload
 import os
 import time
 
-from PyQt5 import uic
 from PyQt5.QtNetwork import QTcpSocket
 from PyQt5.QtCore import QTimer
+from PyQt5 import uic
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QFileDialog, QStatusBar, QLabel,
     QListWidgetItem, QErrorMessage, QMessageBox, QPushButton, QTableWidget
