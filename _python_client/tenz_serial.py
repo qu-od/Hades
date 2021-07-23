@@ -7,6 +7,54 @@ import serial.tools.list_ports as list_serials
 import serial
 
 from wheels import crop_float
+from dataclasses import WeightPoint, WeightTimeline
+
+#----------------TYPE ALIASES-----------------
+Line = str
+Lines = List[Line]
+
+#--------------NAMING DICTIONARIES-----------------
+device_number_to_port_number: Dict[int, int] = {
+    #dict need updating in case of new pairing event
+    #port 0 means that the outgoing port is unknown
+    1  : 13,
+    2  : 14,
+    3  : 16,
+    4  : 18,
+    5  : 21,
+    6  : 24,
+    7  : 25, #25 порт - CSR
+    8  : 20, #20 порт - CSR
+    9  : 17, #17 порт - CSR # NEED TESTING (имя не распозналось)
+    10 : 15, #15 порт - CSR
+    11 : 19, #19 порт - CSR
+    12 : 26, #26 порт - CSR
+    13 : 4, #отладочный девайс (будет привязываться и к втройке и к CSR) 
+    14 : 0,
+    15 : 0,
+}
+
+device_number_to_tenz_name: Dict[int, 'str'] = { 
+    # dict need updating in case of new pairing event
+    # tenz_name 0 means that tenz is epsent
+    # letter b stands for "blue arduino" i. e. arduino with 328 processor
+    # letter T in names is latin
+    1  : 'T-1b',
+    2  : 'T-2' ,
+    3  : 'T-3' ,
+    4  : 'T-4' ,
+    5  : 'T-5' ,
+    6  : 'T-6b',
+    7  : 'T-7b',
+    8  : 'T-8b',
+    9  : 'T-9b',
+    10 : 'T-10',
+    11 : 'T-11',
+    12 : 'T-12',
+    13 : 'T-13', 
+    14 : 'T-0',
+    15 : 'T-0',
+}
 
 '''def toggle_arduino_led(ser: serial.Serial, is_turn_on: bool) -> Tuple[str, bool]:
     # compatible with bt_test.ino program
@@ -30,11 +78,23 @@ class ComPort():
     
     #---------------------------методы для пересылок----------------------------
     def open(self):
+        raise NotImplementedError("Use open_with_flag instead")
         try:
             self._ser = serial.Serial(f'COM{self._number}') #self means "COM1" for COM1 port
             print(f'{self} opened ***\\')
         except serial.serialutil.SerialException:
             print(f'{self} was not opened! It was not found most probably')
+
+    def _open_with_flag(self) -> bool:
+        is_opening_succ: bool = False
+        try:
+            self._ser = serial.Serial(f'COM{self._number}') #self means "COM1" for COM1 port
+            print(f'{self} opened ***\\')
+            is_opening_succ = True
+        except serial.serialutil.SerialException:
+            print(f'{self} was not opened! It was not found most probably')
+            is_opening_succ = False
+        return is_opening_succ
 
     def flush_input(self):
         if self._ser:
@@ -45,7 +105,7 @@ class ComPort():
         if self._ser: 
             self._ser.close()
             self._ser = None
-            # self = None #NEED HUGE TESTING
+            # self = None 
             print(f'{self} closed ___/')
         else: 
             print(f'{self} already has been closed.')
@@ -75,6 +135,7 @@ class ComPort():
 
 
 class ComPortUtils(): #NEED TESTING #есть костыли
+
     def __init__(self):
         self.info = "Service functions for comports setup"
 
@@ -90,6 +151,7 @@ class ComPortUtils(): #NEED TESTING #есть костыли
         print(comport.hwid)
 
     def get_names_and_ports_from_registry(self):
+        raise NotImplementedError
         reg_root_key = winreg.HKEY_CLASSES_ROOT
         reg_handle = winreg.CreateKey(reg_root_key)
         print("REG HANDLE WORKED:", reg_handle)
@@ -98,12 +160,23 @@ class ComPortUtils(): #NEED TESTING #есть костыли
                 "\Enum\BTHENUM\Dev_002113002876"+
                 "\\7&13438a0b&1&BluetoothDevice_002113002876")
         key_name = "FriendlyName"
-        tenz_names_list: List[str] = []
+        tenz_names_list: List[str] = list(device_number_to_tenz_name.values())
         port_numbers_list: List[int] = []
 
-        return tenz_names_list, port_numbers_list
+        return tenz_names, port_numbers
+
+    def get_devices_numbers_with_ports_assigned_in_dict(self) -> List[int]:
+        numbers_of_devices_with_ports: List[int] = [
+            key
+            for key, value in device_number_to_port_number.items()
+            if value != 0
+            ]
+        print(f"Devices {numbers_of_devices_with_ports} "
+                +"have assigned ports")
+        return numbers_of_devices_with_ports
 
     def get_tenz_comports_numbers(self) -> List[int]: #NEED TESTING
+        raise NotImplementedError
         port_list = list(list_serials.comports())
         outgoing_ports_numbers = []
         for port in port_list:
@@ -136,14 +209,40 @@ class ComPortUtils(): #NEED TESTING #есть костыли
     #-------------------------CALIBRATION PAIR CLASS----------------------------
 
 class CalibrationDict(dict):
-    def __init__(self):
-        # self_type = Dict[int, Tuple[float, float]]
-        print("Calibration dict created")
+    """
+    Type of a dict is Dict[int, Tuple[float, float]]
+    Namely: Dict[calibration_pair_number, Tuple[weight, value]]
+    Чтобы не делать калибровку каждый раз при включении питания датчиков,
+    Калибровочные словари всех датчиков будут сохранены в файле
+    """
+    """calib_file format is:
+    TENZ {self.tenz_name} START 
+    1, weight, value
+    2, weight, value
+    3, weight, value
+    ...
+    TENZ {self.tenz_name} END
+    
+    TENZ {next tenz name} START 
+    ...
+    TENZ {next tenz name} END
+    sorting by tenz is not implemented
+    """
+
+    def __init__(self, tenz_name: str):
+        self.tenz_name: str = tenz_name #WILL IT INTERFERE WITH TENZ.TENZ_NAME?
+        self.calib_file: str = "Калибровка.txt" #один файл для всех
+        self.load_calib_dict_from_file()
+        print("Calibration dict loaded") 
+            # при создании инстанса Tenz загрузили из файла
 
     def add_calibration_pair(self, weight: float, value: float):
         calib_pairs_number = self.__len__()
         self[calib_pairs_number] = weight, value #STARTING KEYS FROM ZERO
         print('Calibration pair added')
+        # апдейтим файл после добавления каждой калибровочной точки
+            # почему бы бля и нет
+        self.update_calib_dict_in_file()
 
     def clear_all_calibration_pairs(self):
         self.clear()
@@ -168,7 +267,74 @@ class CalibrationDict(dict):
         min_to_max_scale_ratio: float = min(scales) / max(scales)
         print("Scale convergence rate =", min_to_max_scale_ratio)
         return min_to_max_scale_ratio > convergence_rate
+    
+    def _create_file_entry(self) -> List[Line]:
+        lines_to_write: Lines = [ #with EOL symbol already!
+            f"TENZ {self.tenz_name} START\n",
+            *[f"{calib_pair_index}, {calib_pair[0]}, {calib_pair[1]}\n"
+                for calib_pair_index, calib_pair in self.items()
+                ],
+            f"TENZ {self.tenz_name} END\n",
+        ]
+        return lines_to_write
 
+    def _write_file_entry_to_dict(self, loaded_entry: Lines):
+        tenz_name_from_entry: str = loaded_entry[0].split(' ')[1]
+        if tenz_name_from_entry != self.tenz_name:
+            raise NameError("Wrong name in CalibDict file entry")
+        self.clear_all_calibration_pairs()
+        for line in loaded_entry[1: -1]:
+            weight: float = line.split(', ')[1]
+            value:  float = line.split(', ')[2]
+            print("weight and value from dict:", weight, value)
+            self.add_calibration_pair(weight, value)
+
+    def update_calib_dict_in_file(self): #or rewrite
+        with open(self.calib_file, 'r') as F:
+            file_buffer: List[Line] = [line for line in F] #preserving EOL symbols!
+        start_line_num: Optional[int] = None
+        end_line_num:   Optional[int] = None
+        for i, line in enumerate(file_buffer):
+            if line is f"TENZ {self.tenz_name} START\n":
+                start_line_num: int = i
+            if line is f"TENZ {self.tenz_name} END\n":
+                end_line_num: int = i
+        if start_line_num == None: 
+            # then entry is not found in buffer
+            updated_file_buffer: List[Line] = (
+                file_buffer
+                +self._create_file_entry()
+            )
+        if start_line_num != None:
+            updated_file_buffer: List[Line] = (
+                file_buffer[:start_line_num]
+                +self._create_file_entry()
+                +file_buffer[(end_line_num + 1) :] #NEED TESTING
+            )
+        with open(self.calib_file, 'w') as F:
+            F.write("".join(updated_file_buffer))
+
+    def load_calib_dict_from_file(self):
+        with open(self.calib_file, 'r') as F:
+            file_buffer: List[Line] = [line for line in F] #preserving EOL symbols!
+        start_line_num: Optional[int] = None
+        end_line_num:   Optional[int] = None
+        for i, line in enumerate(file_buffer):
+            if line is f"TENZ {self.tenz_name} START\n":
+                start_line_num: int = i
+            if line is f"TENZ {self.tenz_name} END\n":
+                end_line_num: int = i
+        if (start_line_num == None) or (end_line_num == None):
+            print("Calib dict file entry was not found")
+            return
+        loaded_entry: Lines = \
+            file_buffer[start_line_num : (end_line_num + 1)]
+        self._write_file_entry_to_dict(loaded_entry)
+        print("calib_dict loaded from file")
+
+    def __del__(self):
+        print("Updating in file test (during Calib_dict deletion)")
+        self.update_calib_dict_in_file()
 
 #---------------------------------TENZ CLASS ITSELF-----------------------------
 
@@ -179,8 +345,30 @@ class Tenz():
         self.comport = ComPort(comport_number)
         self.protocol_key: int = 42 #key for tenz commands. Could be secured
         self.tenz_name: str = tenz_name
-        self.tenz_number: int = int(tenz_name.split('T')[-1])
-        self.calib_dict = CalibrationDict()
+        # self.tenz_number: int = int(tenz_name.split('T')[-1]) #REMOVED CUZ IAGNI
+        self.calib_dict = CalibrationDict(tenz_name)
+        self.weight_timeline = WeightTimeline()
+
+    def __str__(self):
+        return (
+            "--------------TENZ INSTANCE--------------\n"
+            + f"Tenz name: {self.tenz_name}\n"
+            + f"Comport number: {self.comport._number}\n"
+            + f"Protocol key: {self.protocol_key}\n"
+            )
+
+    def open_comport(self) -> bool:
+        is_opening_succ: bool = False
+        is_opening_succ = self.comport._open_with_flag()
+        if not is_opening_succ:
+            print("Port opening is not succ so DEL SELF")
+            del self # cuz there must not be tenz in tenzes with closed ports
+            return False
+        elif is_opening_succ:
+            return True
+
+    def close_comport(self):
+        self.comport.close()
 
     def exec_command(
             self, command_number: int, 
@@ -213,6 +401,15 @@ class Tenz():
         scale = self.calib_dict.dumb_mean_scale_for_tenz()
         print("Scale calculated:", scale)
         return scale
+
+    def append_weight_point(self):
+        units: float = crop_float(self.get_units())
+        new_weight_point = WeightPoint(time.time(), units)
+        self.weight_timeline.append_point(new_weight_point)
+
+    def plot_data(self) -> Tuple[List[float], List[float]]: #NEED TESTING
+        times_list, weights_list = self.weight_timeline.get_lists_for_plot() #NEED TESTING
+        return times_list, weights_list
 
     #---------------------------command methods---------------------------------
     def tare(self):
@@ -251,31 +448,88 @@ class Tenz():
 #--------------------------------MULTIPLE PORTS CLASS----------------------------------
 
 class Tenzes(dict):
-    # TENZ_NAME is the key
-    # TENZ is the value
-    def __init__(self, port_numbers_list: Optional[List[int]] = None):
-        if not port_numbers_list:
-            print("Attempting to search all ports automaticly...")
+    '''
+    device_name is a key
+    Tenz instance is a value 
+
+    THE IDEA is that only Tenzes with open ports can be contained in Tenzes!
+    So tenz'es comport shoult be opened in a constructor
+    And if port is was not opened (or closed somehow) Tenz should be deleted from Tenzes
+
+    CALIB DICT загружается в конструкторе Tenz.
+    Живет в классе Tenz, как его аттрибут
+    При добавлении каждой calib_pair апдейтится файл с калибровками
+    Соответственно при удалении Tenz calib_dict еще раз апдейтит себя в файл
+    '''
+    def __init__(self, user_input_devices_numbers: Optional[List[int]] = None):
+        if not user_input_devices_numbers: 
+            # then look up all devices with non-zero ports
+            devices_numbers: List[int] = \
+                ComPortUtils().get_devices_numbers_with_ports_assigned_in_dict()
+            '''print("Attempting to search all ports automaticly...")
             # port_numbers_list = ComPortUtils().get_tenz_comports_numbers() 
-            tenz_names_list, port_numbers_list = \
-                ComPortUtils().get_names_and_ports_from_registry()
-        for port_number in zip(tenz_names_list, port_numbers_list):
-            
-            # mind the difference between the tenz_number and the port_number
-            self[tenz_number] = Tenz(tenz_name, port_number) #NEED TESTING
+            tenz_names, port_numbers = ComPortUtils().get_names_and_ports_from_registry()'''
+            print("Looking for ports in the dictionary. " 
+                 +"Attempting to open them...")
+        if user_input_devices_numbers:
+            devices_numbers: List[int] = user_input_devices_numbers
 
-    def open_ports_of_all_tenzes(self):
-        for tenz in self: tenz.comport.open()
+        tenz_names:   List[str] = []
+        port_numbers: List[int] = []
+        for dev_num in devices_numbers:
+            try: 
+                tenz_name: str = device_number_to_tenz_name[dev_num]
+                port_number: int = device_number_to_port_number[dev_num]
+            except KeyError:
+                   print(f"Тензодатчика с номером {dev_num} нет. "
+                        +"Попробуйте вводить номера от 1 до 15 или"
+                        +"проверьте словарь портов.")
+            new_tenz = Tenz(tenz_name, port_number)
+            is_opening_succ = new_tenz.open_comport()
+            if is_opening_succ:
+                #we need new_tenz in tenzes if only its port opened
+                self[dev_num] = new_tenz #NEED TESTING
+        print(self)
+        print(self.keys())
 
-    def close_ports_of_all_tenzes(self):
-        for tenz in self: tenz.comport.close()
+    def __str__(self):
+        return "".join([
+            f"\nDevice number {dev_num}\n{tenz}"
+            for dev_num, tenz in self.items()
+            ])
 
+    def close_all(self):
+        dev_nums = self.keys()
+        for dev_num in dev_nums:
+            self[dev_num].close_comport()
+            del self[dev_num] #tenz destructor
+            # del self[dev_num] #remove from Tenzes dict. overkill. NEED TESTING
+        print(self.keys())
 
+    def close_some(self, devices_numbers: List[int]):
+        for dev_num in devices_numbers:
+            self[dev_num].close_comport()
+            del self[dev_num] #tenz destructor
+            # del self[dev_num] #remove from Tenzes dict. overkill. NEED TESTING
+        print(self.keys())
+
+    def get_all_plot_data(self) -> List[Tuple[List[float], List[float]]]:
+        return [
+            tenz.plot_data()
+            for tenz in self.values()
+        ]
+
+    def get_some_tenzes_plot_data(self, device_numbers: List[int]) -> List[Tuple[List[float], List[float]]]:
+        return [
+            self[dev_num].plot_data()
+            for dev_num in device_numbers
+        ]
 
 #-----------------------------------MAIN FOR TESTING-------------------------------------
-def calibration_test(): #outdated
+def calibration_test(): #OUTDATED
+    raise NotImplementedError("Outdated function!")
     tenz = Tenz(11)
-    tenz.comport.open()
+    tenz.open_comport()
 
     tenz.tare()
 
@@ -291,11 +545,11 @@ def calibration_test(): #outdated
     for _ in range(100):
         print(tenz.get_units())
 
-    tenz.comport.close()
+    tenz.close_comport()
 
 
 if __name__ == '__main__':
     tenz = Tenz()
-    tenz.comport.open()
+    tenz.open_comport()
     for _ in range(100):
         print(tenz.comport.read_line())

@@ -10,16 +10,18 @@ from PyQt5.QtNetwork import QTcpSocket
 from PyQt5.QtCore import QTimer
 from PyQt5 import uic
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QFileDialog, QStatusBar, QLabel,
+    QApplication, QWidget, QFileDialog, QStatusBar, QLabel, QDoubleSpinBox, 
     QListWidgetItem, QErrorMessage, QMessageBox, QPushButton, QTableWidget
 )
 
 from commands import Command
 from tcp_client import Connection
 from command_makers import *
-from window_misc import update_calibration_table, show_error, show_info
+from window_misc import (
+    update_calibration_table, clear_contents_of_calibration_table,
+    show_error, show_info
+    )
 from tenz_serial import Tenz, Tenzes, ComPortUtils
-from dataclasses import WeightPoint, WeightTimeline
 from wheels import crop_float
 
 
@@ -31,8 +33,12 @@ class Window(object):
         self.ui.show()
 
         self.conn = None
-        # self.tenz = None #deprecated
         self.tenzes = None
+        self.dev_num: int = self.ui.device_number_spinbox.value()
+        # dev_num is an alias for devica_number
+        #в гуйне дефолтное значение спинбокса было установлено = 0
+        self.client_sample_rate: int = self.ui.sample_rate_spinbox.value() #default was 100
+        self.oversampling_rate: int = self.ui.oversampling_spinbox.value() #default was 1
 
         self.tenz_labels = [ #NEED HUGE TESTING
             self.ui.tenz_units_label_1,
@@ -93,6 +99,8 @@ class Window(object):
             self.get_all_sensors_values)
 
         #-----------------вкладка калибровки тензодатчиков----------------------
+        self.ui.device_number_spinbox.valueChanged.connect(
+            self.change_current_device_number)
         self.ui.tenz_tare_button.clicked.connect(
             self.tenz_tare)
         self.ui.tenz_sign_weight_button.clicked.connect(
@@ -101,6 +109,10 @@ class Window(object):
             self.tenz_calibrate)
 
         #-----------------вкладка чтения тензодатчиков----------------------
+        self.ui.sample_rate_spinbox.valueChanged.connect(
+            self.change_sample_rate)
+        self.ui.oversampling_spinbox.valueChanged.connect(
+            self.change_oversampling_rate)
         self.ui.tenz_start_units_button.clicked.connect(
             self.tenz_start_units)
         self.ui.tenz_stop_units_button.clicked.connect(
@@ -351,89 +363,157 @@ class Window(object):
 
     #------------------функции для показаний тензодатчиков----------------------
 
+    def change_current_device_number(self):
+        new_device_number: int = self.ui.device_number_spinbox.value()
+        if not self.check_device_number_in_tenzes(new_device_number):
+            clear_contents_of_calibration_table(self.ui.tenz_calibration_table)
+            print(f"Device number {new_device_number} "
+                  +"haven't been found in Tenzes")
+            self.ui.device_number_spinbox.setValue(self.dev_num)
+                # возвратили старое значение в спинбокс
+            return
+        self.dev_num = new_device_number
+        self.redraw_calib_table()
+        print(f"Device_number changed to {self.dev_num}")
+
     def tenz_open_comports(self):
-        text: str = self.ui.tenz_port_name_ledit.text()
+        text: str = self.ui.tenz_open_device_ledit.text()
         if not text:
             # self.tenz = Tenz() #автопоиск порта #deprecated
             self.tenzes = Tenzes()
         elif text:
-            port_numbers_list = list(map(int, text.split(', ')))
-            self.tenzes = Tenzes(port_numbers_list)
-        self.tenzes.open_ports_of_all_tenzes()
+            devices_numbers = list(map(int, text.split(', ')))
+            self.tenzes = Tenzes(devices_numbers)
 
-    def tenz_close_comports(self):
-        if not is_tenzes(self.tenzes): return
-        self.tenzes.close_ports_of_all_tenzes()
-        print("Ports closed")
-        show_info("Ports closed")
-        del self.tenzes
-        self.tenzes = None
+    def tenz_close_comports(self): #NEED TESTING
+        if not self.check_tenzes_dict(): return
+        text: str = self.ui.tenz_open_device_ledit.text()
+        if not text:
+            self.tenzes.close_all()
+            del self.tenzes
+            self.tenzes = None
+            print("All devices closed")
+            show_info("Соединение со всеми датчиками разорвано")
+        elif text:
+            devices_numbers = list(map(int, text.split(', ')))
+            self.tenzes.close_some(devices_numbers)
+            print("Requested devices closed")
+            show_info("Соединение с указанными датчиками разорвано")
 
     def tenz_tare(self):
-        if not is_tenz(self.tenz): return
-        self.tenz.tare()
-        show_info(f"Тензодатчик тарирован.\n" + 
+        if not self.check_tenz(): return
+        self.tenzes[self.dev_num].tare()
+        show_info(f"Тензодатчик {self.dev_num} тарирован.\n" + 
             "Сейчас он не должен был быть ничем нагружен")
 
     def tenz_sign_weight(self):
-        if not is_tenz(self.tenz): return
+        if not self.check_tenz(): return
+        tenz = self.tenzes[self.dev_num] #CLASS ALIAS NEED HUUGE TESTING (already worked in testing)
+        weight: float = float(self.ui.tenz_sign_weight_d_spinbox.value())
+        tenz.sign_weight(weight)
 
-        # CHANGE LEDIT TO DOUBLE_SPINBOX
+        self.redraw_calib_table() #NEED TESTING
 
-        weight: float = float(self.ui.tenz_sign_weight_ledit.text())
-        self.tenz.sign_weight(weight)
-        table = self.ui.tenz_calibration_table #alias
-        table.insertRow(table.rowCount())
-        update_calibration_table(table, self.tenz.calib_dict)
-        if not self.tenz.calib_dict.are_scales_converge():
+        if not tenz.calib_dict.are_scales_converge():
             print("Scales don't converge properly")
             show_info("Значение множителя не сходится с заданной точностью")
 
     def tenz_calibrate(self):
-        if not is_tenz(self.tenz): return
-        scale: float = self.tenz.calc_scale()
-        self.tenz.set_scale(scale)
+        if not self.check_tenz(): return
+        tenz = self.tenzes[self.dev_num] #CLASS ALIAS NEED HUUGE TESTING (already worked in testing)
+
+        scale: float = tenz.calc_scale()
+        tenz.set_scale(scale)
         show_info(f"Калибровка завершена.\nУстановлен множитель {scale}")
 
     def tenz_start_units(self):
-        if not is_tenz(self.tenz): return
+        if not self.check_tenzes_dict(): return
+        client_reading_timer_delay: int = self.change_sample_rate()
         self.tenz_get_units_timer = QTimer()
         self.tenz_get_units_timer.timeout.connect(self.get_and_show_units)
-
-        client_reading_timer_delay: int = 10 #ВЫВЕСТИ В ОКНО
-        server_reading_timer_delay: int = \
-            int(client_reading_timer_delay * (3 / 4))
-        print("ARDUINO DELAY WAS SET AS:")
-        print(self.tenz.set_loop_delay(server_reading_timer_delay))
-
         self.tenz_get_units_timer.start(client_reading_timer_delay)
-
-        times_to_measur: int = 1 #ВЫВЕСТИ В ОКНО
-        print("ARDUINO TIMES_TO_MEASUR SET AS:")
-        print(self.tenz.set_times_to_measur(times_to_measur))
-
-        self.weight_timeline = WeightTimeline()
-
+        self.change_oversampling_rate()
 
     def get_and_show_units(self):
-        if not is_tenz(self.tenz): return
-        units = crop_float(self.tenz.get_units())
-        
-        new_weight_point = WeightPoint(time.time(), units)
-        self.weight_timeline.append_point(new_weight_point)
+        if not self.check_tenzes_dict(): return
+        for tenz in self.tenzes.values():
+            tenz.append_weight_point()
+        all_tenzes_plot_data: List[Tuple[List[float], List[float]]] = \
+            self.tenzes.get_all_plot_data()
         self.ui.units_graph_gview.clear()
-        self.ui.units_graph_gview.plot(*self.weight_timeline.get_lists_for_plot())
-
-        for i, label in enumerate(self.tenz_labels):
-            label.update(units + 0 * i) #TEST
+        self.ui.units_graph_gview.plot_timelines(all_tenzes_plot_data)
         
-
     def tenz_stop_units(self):
-        if not is_tenz(self.tenz): return
+        if not self.check_tenzes_dict(): return
         self.tenz_get_units_timer.stop()
-        self.weight_timeline.__del__() #closes logfile #NEED TESTING
+        for tenz in self.tenzes.values():
+            tenz.weight_timeline.__del__() #to close logfiles
+    
+    def change_sample_rate(self):
+        new_sample_rate: int = self.ui.sample_rate_spinbox.value()
+        minimum_sample_rate: int = 1 
+        maximum_sample_rate: int = 100 #протестировать предельное значение
+        if new_sample_rate < minimum_sample_rate:
+            show_error("Частота отсчетов слишком мала")
+            raise ValueError("Частота отсчетов слишком мала")
+            self.ui.sample_rate_spinbox.setValue(self.client_sample_rate) #откат
+            return
+        if new_sample_rate > maximum_sample_rate:
+            show_error("Частота отсчетов слишком велика")
+            raise ValueError("Частота отсчетов слишком велика")
+            self.ui.sample_rate_spinbox.setValue(self.client_sample_rate) #откат
+            return
+        client_reading_timer_delay: int = int(1000 / new_sample_rate) #in microseconds
+        server_reading_timer_delay: int = \
+            int(client_reading_timer_delay * (3 / 4))
+        for tenz in self.tenzes.values():
+            tenz.set_loop_delay(server_reading_timer_delay)
+        self.client_sample_rate = new_sample_rate #обновление аттрибута
+        print("ARDUINO DELAY WAS SET AS:", server_reading_timer_delay)
+        return client_reading_timer_delay
 
-        
+    def change_oversampling_rate(self):
+        new_oversampling_rate: int = self.ui.oversampling_spinbox.value()
+        minimum_oversampling_rate: int = 1
+        maximum_oversampling_rate: int = 30 #можно больше, но зачем?
+        if new_oversampling_rate < minimum_oversampling_rate: #оверкилл вообще-то
+            show_error("Cлишком мало измерений на отсчет")
+            raise ValueError("Cлишком мало измерений на отсчет")            
+            self.ui.oversampling_spinbox.setValue(self.oversampling_rate) #откат
+            return
+        if new_oversampling_rate > maximum_oversampling_rate:
+            show_error("Cлишком много измерений на отсчет")
+            raise ValueError("Cлишком много измерений на отсчет")
+            self.ui.oversampling_spinbox.setValue(self.oversampling_rate) #откат
+            return
+        for tenz in self.tenzes.values():
+            tenz.set_times_to_measur(new_oversampling_rate)
+        self.oversampling_rate = new_oversampling_rate #обновление аттрибута
+        print("ARDUINO TIMES_TO_MEASUR SET AS:", new_oversampling_rate)
+
+    def check_device_number_in_tenzes(self, device_number: int) -> bool:
+        return device_number in self.tenzes.keys()
+
+    def check_tenz(self) -> bool:
+        # print(self.dev_num in self.tenzes.keys())
+        if self.dev_num == 0: show_error(
+            "Сначала нужно выбрать номер подключенного датчика!")
+        print("Current KEYS in Tenzes:", self.tenzes.keys())
+        # print("DEBUG: DEVNUM:", self.dev_num)
+        return self.dev_num in self.tenzes.keys()
+        # предполагается, что если с датчиком что-то случилось,
+            # он удаляется от словаря Tenzes
+    
+    def check_tenzes_dict(self) -> bool:
+        return bool(self.tenzes)
+
+    def clear_calib_table(self):
+        self.ui.tenz_calibration_table.clear()
+
+    def redraw_calib_table(self):
+        table = self.ui.tenz_calibration_table #alias
+        tenz = self.tenzes[self.dev_num] #alias
+        update_calibration_table(table, tenz.calib_dict)
 
     #-------функции для установки соединения и отправки сообщений вручную-------
 
@@ -506,7 +586,9 @@ class Window(object):
 
 
 # -----------------------вспомогательные функции---------------------
-def is_tenz(tenz: Tenz) -> bool:
+
+def is_tenz(tenz: Tenz) -> bool: #DEPRECATED
+    raise NotImplementedError("sigle self.tenz WAS REMOVED from Mainwindow")
     if not tenz: 
         # raise TypeError("Create tenz object first!")
         show_error("Серийный порт недоступен!")
@@ -514,7 +596,11 @@ def is_tenz(tenz: Tenz) -> bool:
     elif tenz:
         return True
 
-def is_tenzes(tenzes: Tenzes) -> bool:
+def is_tenzes(tenzes: Tenzes) -> bool: #DEPRECATED
+    raise NotImplementedError(
+        'Function is deprecated. Try to use "check_device_number_in_tenzes"'
+        + "function instead"
+        )
     if not tenzes: 
         # raise TypeError("Create Tenzes object first!")
         print("There is no tenzes")

@@ -8,9 +8,9 @@ void setup() {
     //baudrate=19200 to match arduino pro mini w 168 baudrate
 }
 void loop() {
- delay(3000);
+ delay(50);
  digitalWrite(LED_BUILTIN, LOW);  
- delay(3000);                     
+ delay(50);                     
  digitalWrite(LED_BUILTIN, HIGH);
   
  //byte Btearray[] = {0x00, 0xff, 0x88};

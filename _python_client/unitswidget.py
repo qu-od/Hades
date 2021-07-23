@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Optional
 from PyQt5.QtWidgets import QLabel
 
 
-class UnitsWidget(QLabel): #encapsulate in a bigger cllass
+class UnitsWidget(QLabel): #encapsulate in a bigger class
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tenz_number = 0 #не работает

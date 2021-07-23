@@ -46,12 +46,21 @@ def set_all_motor_buttons_to_default(ui):
     print('All buttons have been set into default state (is_checked and text)')
 
 def update_calibration_table(
-        calib_table: QTableWidget, calib_dict):
-    calib_table.clearContents()
-    for i in range(len(calib_dict)):
+        table: QTableWidget, calib_dict):
+    table.clear() #clear items in table
+    number_of_rows: int = table.rowCount()
+    for _ in range(number_of_rows): table.removeRow(0)
+    for _ in range(len(calib_dict)): #рисуем колонки
+        table.insertRow(table.rowCount())
+    for i in range(len(calib_dict)): #заполняем колонки
         weight, value = calib_dict[i]
         scale = value / weight
-        set_row_with_floats_tuple(calib_table, i, weight, value, scale)
+        set_row_with_floats_tuple(table, i, weight, value, scale)
+        QTableWidget.removeRow
+
+def clear_contents_of_calibration_table(table: QTableWidget):
+    table.clearContents() #NEED TESTING
+
 
 def set_row_with_floats_tuple(
         table: QTableWidget, row_number: int, *values: Tuple[float]):

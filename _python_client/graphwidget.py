@@ -14,14 +14,41 @@ from PyQt5.QtWidgets import (QDialog, QApplication, QPushButton,
 
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, plot
+from my_types import WeightTimeline, WeightTimelines
 
 class GraphWidget(PlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        # self.test_var: int = 422
 
-    def my_test_method(self):
-        print("my_test_method WORKED")
+    def plot_timelines(self, weight_timelines: WeightTimelines):
+        
+        '''#FAKE FOR TESTING
+        weight_timelines.append(self._fake_weight_timeline(1)) #TEST
+        weight_timelines.append(self._fake_weight_timeline(2)) #TEST
+        weight_timelines.append(self._fake_weight_timeline(3)) #TEST'''
+        
+        for weight_timeline in weight_timelines:
+            self.plot(*weight_timeline)
+    
+    def _fake_weight_timeline( #DEPRECATED
+            self, base_weight_timeline: WeightTimeline, shift_in_kilos: float
+        ) -> WeightTimeline:
+        base_times, base_weights = base_weight_timeline
+        new_weights = [weight + shift_in_kilos for weight in base_weights]
+        return base_times, new_weights
 
+
+    '''def test_method(self, s: str, n: int) -> int: #its working!
+        print("another_test_method WORKED")
+        print(f"That's how it worked: {s*n}")
+        return n * 10
+
+    def get_test_var(self):
+        print("TEST VAR =", self.test_var)
+        return self.test_var'''
+
+    
 
 
 #--------------------MATPLOTLIB OPTIONS-------------------------
