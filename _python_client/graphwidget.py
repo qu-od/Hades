@@ -14,22 +14,26 @@ from PyQt5.QtWidgets import (QDialog, QApplication, QPushButton,
 
 import pyqtgraph as pg
 from pyqtgraph import PlotWidget, plot
-from my_types import WeightTimeline, WeightTimelines
+from dataclasses import WeightPoint, WeightTimeline
 
 class GraphWidget(PlotWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # self.test_var: int = 422
+            # self.test_var: int = 422 is working
+        self.number_of_tenzes: int = 15
+        self.graphs_visibility: Dict[int, bool] = {
+            i+1 : True
+            for i in range(self.number_of_tenzes)
+        }
+            # visibility of all graphs defaults to True
+        print("self.devices_visibility at initialization:", self.graphs_visibility)
 
-    def plot_timelines(self, weight_timelines: WeightTimelines):
-        
-        '''#FAKE FOR TESTING
-        weight_timelines.append(self._fake_weight_timeline(1)) #TEST
-        weight_timelines.append(self._fake_weight_timeline(2)) #TEST
-        weight_timelines.append(self._fake_weight_timeline(3)) #TEST'''
-        
+    def plot_timelines(self, weight_timelines: List[WeightTimeline]):        
         for weight_timeline in weight_timelines:
-            self.plot(*weight_timeline)
+            if self.graphs_visibility[weight_timeline.device_number] is True:
+                lists_for_plotting: Tuple[List[float], List[float]] = \
+                    weight_timeline.get_lists_for_plotting()
+                self.plot(*lists_for_plotting) #NEED TESTING
     
     def _fake_weight_timeline( #DEPRECATED
             self, base_weight_timeline: WeightTimeline, shift_in_kilos: float
@@ -38,8 +42,14 @@ class GraphWidget(PlotWidget):
         new_weights = [weight + shift_in_kilos for weight in base_weights]
         return base_times, new_weights
 
+    def update_graphs_visibility(self, graph_visibility_for_each_device: Dict[int, bool]):
+        self.graphs_visibility = graph_visibility_for_each_device
 
-    '''def test_method(self, s: str, n: int) -> int: #its working!
+
+    '''def test_func(self):
+        pass
+
+    def test_method(self, s: str, n: int) -> int: #its working!
         print("another_test_method WORKED")
         print(f"That's how it worked: {s*n}")
         return n * 10

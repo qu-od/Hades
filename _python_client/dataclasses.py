@@ -25,7 +25,8 @@ class WeightPoint():
         return param_value
 
 class WeightTimeline(list): #добавить метод для логирования (по 10 точек например не закрывая файл)
-    def __init__(self):
+    def __init__(self, device_number: int):
+        self.device_number: int = device_number
         self.points_to_store: int = 300
         self.when_current_chunk_begun: Optional[float] = None
             #should be time.time() format
@@ -53,7 +54,17 @@ class WeightTimeline(list): #добавить метод для логирова
     def _log_current_chunk(self):
         self.weight_timeline_logger.log_weight_timeline_chunk(self)
 
-    def get_lists_for_plot(self) -> Tuple[list, list]:
+    def get_lists_for_plot(self) -> Tuple[list, list]: #DEPRECATED
+        raise NotImplementedError(
+            "Obsolete method! Use methods of WeightTimeline class instead!")
+        if not self:
+            times_list, weights_list = [], []
+        else:
+            times_list  =  [wp.time   for wp in self]
+            weights_list = [wp.weight for wp in self]
+        return times_list, weights_list
+
+    def get_lists_for_plotting(self) -> Tuple[List[float], List[float]]:
         if not self:
             times_list, weights_list = [], []
         else:

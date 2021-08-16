@@ -33,28 +33,17 @@ class Window(object):
         self.ui.show()
 
         self.conn = None
+
+        self.number_of_tenzes: int = 15
+            # number_of_tenzes should be a parameter
+            # cuz there probably will be more tenzes
         self.tenzes = None
         self.dev_num: int = self.ui.device_number_spinbox.value()
-        # dev_num is an alias for devica_number
-        #в гуйне дефолтное значение спинбокса было установлено = 0
+            # dev_num is an alias for devica_number
+            #в гуйне дефолтное значение спинбокса было установлено = 0
         self.client_sample_rate: int = self.ui.sample_rate_spinbox.value() #default was 100
         self.oversampling_rate: int = self.ui.oversampling_spinbox.value() #default was 1
 
-        self.tenz_labels = [ #NEED HUGE TESTING
-            self.ui.tenz_units_label_1,
-            self.ui.tenz_units_label_2,
-            self.ui.tenz_units_label_3,
-            self.ui.tenz_units_label_4,
-            self.ui.tenz_units_label_5,
-        ]
-
-        self.tenz_checkboxes = [
-            self.ui.tenz_checkbox_1,
-            self.ui.tenz_checkbox_2,
-            self.ui.tenz_checkbox_3,
-            self.ui.tenz_checkbox_4,
-            self.ui.tenz_checkbox_5,
-        ]
 
         #---------------------вкладка общего раскрытия--------------------------
         self.ui.expand_all_button.clicked.connect(
@@ -109,6 +98,12 @@ class Window(object):
             self.tenz_calibrate)
 
         #-----------------вкладка чтения тензодатчиков----------------------
+
+        for clicked_signal in self.ui.units_widget.get_signals_of_clicked_visibility_checkboxes():
+            clicked_signal.connect(
+                self.prepare_update_for_graphs_visibility
+                )
+
         self.ui.sample_rate_spinbox.valueChanged.connect(
             self.change_sample_rate)
         self.ui.oversampling_spinbox.valueChanged.connect(
@@ -384,6 +379,9 @@ class Window(object):
         elif text:
             devices_numbers = list(map(int, text.split(', ')))
             self.tenzes = Tenzes(devices_numbers)
+        self.ui.units_widget.enable_unitswidgets_by_device_numbers(
+            self.tenzes.keys()
+            )
 
     def tenz_close_comports(self): #NEED TESTING
         if not self.check_tenzes_dict(): return
@@ -438,16 +436,36 @@ class Window(object):
         if not self.check_tenzes_dict(): return
         for tenz in self.tenzes.values():
             tenz.append_weight_point()
-        all_tenzes_plot_data: List[Tuple[List[float], List[float]]] = \
-            self.tenzes.get_all_plot_data()
+        weight_timelines: List[WeightTimeline] = [
+            tenz.weight_timeline for tenz in self.tenzes.values() #NEED TESTING
+            ]
         self.ui.units_graph_gview.clear()
-        self.ui.units_graph_gview.plot_timelines(all_tenzes_plot_data)
+        self.ui.units_graph_gview.plot_timelines(weight_timelines)
+        self.ui.units_widget.update_and_show_all_units(
+            self.tenzes.get_last_absolute_units()
+            )
         
     def tenz_stop_units(self):
         if not self.check_tenzes_dict(): return
         self.tenz_get_units_timer.stop()
         for tenz in self.tenzes.values():
             tenz.weight_timeline.__del__() #to close logfiles
+
+    def prepare_update_for_graphs_visibility(self):
+        graph_visibility_for_each_device: Dict[int, bool] = {}
+        for tenz_units_widget in self.ui.units_widget.tenz_units_widgets:
+            # alias for check_box_device_number
+            ch_box_dev_num: int = \
+                tenz_units_widget.device_number
+            # alias for check_box_state
+            ch_box_state: bool = \
+                tenz_units_widget._visibility_checkbox.isChecked()
+            graph_visibility_for_each_device[ch_box_dev_num] = ch_box_state
+        self.ui.units_graph_gview.update_graphs_visibility(
+            graph_visibility_for_each_device
+            )
+        print("Update for visibility graph is prepared")
+        
     
     def change_sample_rate(self):
         new_sample_rate: int = self.ui.sample_rate_spinbox.value()

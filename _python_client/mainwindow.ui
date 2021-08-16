@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>863</width>
-    <height>646</height>
+    <width>1225</width>
+    <height>707</height>
    </rect>
   </property>
   <property name="font">
@@ -55,7 +55,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>6</number>
+       <number>5</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -634,31 +634,26 @@
         <string>Чтение ТД</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_18">
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_17">
-          <property name="text">
-           <string>отсчетов / сек</string>
+        <item row="7" column="9">
+         <widget class="QSpinBox" name="oversampling_spinbox">
+          <property name="layoutDirection">
+           <enum>Qt::RightToLeft</enum>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
           </property>
-         </widget>
-        </item>
-        <item row="7" column="0">
-         <widget class="QCheckBox" name="tenz_checkbox_5">
-          <property name="text">
-           <string/>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>30</number>
+          </property>
+          <property name="value">
+           <number>1</number>
           </property>
          </widget>
         </item>
-        <item row="5" column="0">
-         <widget class="QCheckBox" name="tenz_checkbox_3">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0" colspan="2">
+        <item row="5" column="9">
          <widget class="QSpinBox" name="sample_rate_spinbox">
           <property name="layoutDirection">
            <enum>Qt::RightToLeft</enum>
@@ -677,7 +672,7 @@
           </property>
          </widget>
         </item>
-        <item row="8" column="5" colspan="5">
+        <item row="11" column="9">
          <widget class="QPushButton" name="tenz_stop_units_button">
           <property name="minimumSize">
            <size>
@@ -690,31 +685,96 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="0">
-         <widget class="QCheckBox" name="tenz_checkbox_4">
+        <item row="4" column="9">
+         <widget class="QLabel" name="label_17">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Plain</enum>
+          </property>
+          <property name="midLineWidth">
+           <number>0</number>
+          </property>
           <property name="text">
-           <string/>
+           <string>отсчетов / сек:</string>
+          </property>
+          <property name="textFormat">
+           <enum>Qt::AutoText</enum>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="wordWrap">
+           <bool>false</bool>
+          </property>
+          <property name="margin">
+           <number>0</number>
+          </property>
+          <property name="indent">
+           <number>-1</number>
           </property>
          </widget>
         </item>
-        <item row="3" column="2" rowspan="5" colspan="8">
-         <widget class="GraphWidget" name="units_graph_gview"/>
-        </item>
-        <item row="4" column="0">
-         <widget class="QCheckBox" name="tenz_checkbox_2">
+        <item row="6" column="9">
+         <widget class="QLabel" name="label_16">
           <property name="text">
-           <string/>
+           <string>измерений на отсчет:</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
           </property>
          </widget>
         </item>
-        <item row="5" column="1">
-         <widget class="UnitsWidget" name="tenz_units_label_3">
-          <property name="text">
-           <string>l 3</string>
+        <item row="3" column="1" rowspan="9" colspan="8">
+         <widget class="GraphWidget" name="units_graph_gview">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
           </property>
          </widget>
         </item>
-        <item row="8" column="0" colspan="5">
+        <item row="4" column="0" rowspan="8">
+         <widget class="UnitsWidget" name="units_widget" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="9">
          <widget class="QPushButton" name="tenz_start_units_button">
           <property name="minimumSize">
            <size>
@@ -727,63 +787,18 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
-         <widget class="UnitsWidget" name="tenz_units_label_4">
-          <property name="text">
-           <string>l 4</string>
+        <item row="10" column="9">
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
           </property>
-         </widget>
-        </item>
-        <item row="0" column="6" colspan="2">
-         <widget class="QLabel" name="label_16">
-          <property name="text">
-           <string>измерений на отсчет:</string>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
           </property>
-          <property name="alignment">
-           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="UnitsWidget" name="tenz_units_label_2">
-          <property name="text">
-           <string>l 2</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QCheckBox" name="tenz_checkbox_1">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="8" colspan="2">
-         <widget class="QSpinBox" name="oversampling_spinbox">
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>30</number>
-          </property>
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="1">
-         <widget class="UnitsWidget" name="tenz_units_label_5">
-          <property name="text">
-           <string>l 5</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="UnitsWidget" name="tenz_units_label_1">
-          <property name="text">
-           <string>l 1</string>
-          </property>
-         </widget>
+         </spacer>
         </item>
        </layout>
       </widget>
@@ -1057,7 +1072,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>863</width>
+     <width>1225</width>
      <height>21</height>
     </rect>
    </property>
@@ -1072,8 +1087,9 @@
   </customwidget>
   <customwidget>
    <class>UnitsWidget</class>
-   <extends>QLabel</extends>
+   <extends>QWidget</extends>
    <header>unitswidget.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

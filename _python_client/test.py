@@ -1,3 +1,5 @@
+import math
+
 
 '''# print(ord('F'))
 import struct
@@ -153,7 +155,7 @@ class MyDict(dict):
 # MyDict([Tenz(i) for i in range(3)])
 
 import time 
-print(type(time.time())) #float
+# print(type(time.time())) #float
 
 import serial.tools.list_ports as list_serials
 import serial
@@ -174,12 +176,80 @@ def open_serial():
 
 #-----------------------------------------------------
 def open_serial_without_catch():
-    port_str: str = 'COM10'
+    port_str: str = 'COM100'
     self._ser = serial.Serial(port_str)
     print("open_serial_without_catch worked")
 
 
 # open_serial()
 # print(get_comports_list())
-open_serial_without_catch() 
+# open_serial_without_catch() #PERMISSION ERROR
     # получаю в ебло PermissionError(13, 'Отказано в доступе.', None, 5)
+
+# def functional_method_testing(self): #jibberish
+    # return self.
+
+'''var_name = 'foo'
+vars()[var_name] = 423
+print(foo)
+
+from PyQt5.QtWidgets import QtLabel
+print(dir(QtCheckBox))'''
+
+
+'''abs_value = 1700
+base_value = 9
+
+rel_value = abs_value - base_value
+
+
+
+print(int(256 * math.atan((abs_value / base_value))))
+ans_list: list = []'''
+
+
+
+# today's tasks:
+# using composition over inheritance
+# writing docstrings
+# using DATACLASSES
+# avoiding 7 code smells:
+    # using built-in functions (
+        # list comp
+        # any
+        # all
+        # setattr
+        # )
+    # do not write code duplications
+    # use units in names and make names sstraightforward
+    # do not use except: Exception
+    #BONUS CODE SMELL: use custom Exception-classes
+    # remember YAGNI
+
+# self._abs_units_label_palette = self._abs_units_label.palette()
+# self._abs_units_label_palette.setColor(QPalette.Button, QColor('red')) 
+# self._abs_units_label.setPalette(self._abs_units_label_palette)
+
+# print(''.join(['f', 'v', 'g', 'g']))
+# print(f'formatted string {255:X}')
+
+'''def positive_value_error_ratio_to_color_brightness(value_error_ratio: float) -> int:
+    return min(255, int(math.atan(value_error_ratio) * 5000))
+
+# print(math.pi / 2)
+print(positive_value_error_ratio_to_color_brightness(0.05))'''
+
+
+import serial
+from serial import Timeout
+
+test_serial = serial.Serial('COM4')
+test_serial.timeout = 0.1
+
+print(test_serial.timeout)
+
+print("NON_BLOCKING READING", test_serial.read(1))
+print("SOME OTHER IMPORTANT STUFF BE DOIN'")
+
+test_serial.close()
+

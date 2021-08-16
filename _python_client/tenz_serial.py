@@ -9,6 +9,8 @@ import serial
 from wheels import crop_float
 from dataclasses import WeightPoint, WeightTimeline
 
+
+
 #----------------TYPE ALIASES-----------------
 Line = str
 Lines = List[Line]
@@ -29,7 +31,7 @@ device_number_to_port_number: Dict[int, int] = {
     10 : 15, #15 порт - CSR
     11 : 19, #19 порт - CSR
     12 : 26, #26 порт - CSR
-    13 : 4, #отладочный девайс (будет привязываться и к втройке и к CSR) 
+    13 : 4, #отладочный девайс (будет привязываться и к встройке и к CSR)
     14 : 0,
     15 : 0,
 }
@@ -73,6 +75,7 @@ class ComPort():
         self._ser: Optional[serial.Serial] = None
         self._number: int = comport_number
         self._baudrate: int = baudrate
+        self._timeout_in_secs: float = 0.5 #NEED HUGE TESTING
 
     def __str__(self): return f"PORT COM-{self._number}" #to ease debug messages
     
@@ -80,7 +83,7 @@ class ComPort():
     def open(self):
         raise NotImplementedError("Use open_with_flag instead")
         try:
-            self._ser = serial.Serial(f'COM{self._number}') #self means "COM1" for COM1 port
+            self._ser = serial.Serial(f'COM{self._number}')
             print(f'{self} opened ***\\')
         except serial.serialutil.SerialException:
             print(f'{self} was not opened! It was not found most probably')
@@ -88,7 +91,10 @@ class ComPort():
     def _open_with_flag(self) -> bool:
         is_opening_succ: bool = False
         try:
-            self._ser = serial.Serial(f'COM{self._number}') #self means "COM1" for COM1 port
+            self._ser = serial.Serial(
+                f'COM{self._number}', timeout=self._timeout_in_secs
+                )
+            # print("self._ser.timeout =", self._ser.timeout) 
             print(f'{self} opened ***\\')
             is_opening_succ = True
         except serial.serialutil.SerialException:
@@ -123,10 +129,23 @@ class ComPort():
         self._ser.write((line + '\n').encode("utf-8"))
         print(f'--- Line IN {self} --- : {line}')
 
-    def read_bytes(self, bytes_number) -> bytes:
+    def read_bytes(self, bytes_number: int) -> bytes: #DEPRECATED
+        raise NotImplementedError("Use read_bytes_with_flag instead")
         data: bytes = self._ser.read(size = bytes_number)
         print(f'--- FROM {self} --- :', data)
         return data
+
+    def read_bytes_with_flag( #NEED TESTING
+            self, bytes_number: int
+            ) -> Tuple[Optional[bytes], bool]: #WITH TIMEOUT HANDLING
+        try:
+            data: bytes = self._ser.read(size = bytes_number)
+            print(f'--- FROM {self} --- :', data)
+            if (len(bytearray(data)) != bytes_number):
+                raise IndexError("Answer from serial port has wrong length!")
+            return data, True
+        except IndexError:
+            return None, False
 
     def read_line(self) -> str:
         line: str = self._ser.readline().decode("utf-8")
@@ -340,14 +359,15 @@ class CalibrationDict(dict):
 
 class Tenz():
 
-    def __init__(self, tenz_name: str, comport_number: int):
+    def __init__(self, device_number: int, tenz_name: str, comport_number: int):
         # tenz_name format: "TN" (T in latin, N is a tenz_number)
+        self.device_number: int = device_number
         self.comport = ComPort(comport_number)
         self.protocol_key: int = 42 #key for tenz commands. Could be secured
         self.tenz_name: str = tenz_name
         # self.tenz_number: int = int(tenz_name.split('T')[-1]) #REMOVED CUZ IAGNI
         self.calib_dict = CalibrationDict(tenz_name)
-        self.weight_timeline = WeightTimeline()
+        self.weight_timeline = WeightTimeline(self.device_number)
 
     def __str__(self):
         return (
@@ -380,7 +400,13 @@ class Tenz():
         )
 
         response_tuple: Tuple[int, int, float]
-        response_tuple = struct.unpack('=2Bf', self.comport.read_bytes(6)) #NEED TESTING!
+        data, is_reading_succ = self.comport.read_bytes_with_flag(6)
+        if not is_reading_succ:
+            print("ОШИБКА ВЫПОЛНЕНИЯ КОМАНДЫ." 
+                + f"DELETING TENZ... device_number = {self.device_number}")
+            del self #NEED TESTING
+            return
+        response_tuple = struct.unpack('=2Bf', data) #NEED TESTING!
         response_header, error_code, response_data_value = response_tuple
         print('DECODED RESPONSE:', response_header, error_code, response_data_value)
 
@@ -407,9 +433,10 @@ class Tenz():
         new_weight_point = WeightPoint(time.time(), units)
         self.weight_timeline.append_point(new_weight_point)
 
-    def plot_data(self) -> Tuple[List[float], List[float]]: #NEED TESTING
-        times_list, weights_list = self.weight_timeline.get_lists_for_plot() #NEED TESTING
-        return times_list, weights_list
+    def plot_data(self) -> WeightTimeline: #NEED TESTING
+        raise NotImplementedError(
+            "Obsolete method! Use methods of WeightTimeline class instead!"
+            )
 
     #---------------------------command methods---------------------------------
     def tare(self):
@@ -484,7 +511,7 @@ class Tenzes(dict):
                    print(f"Тензодатчика с номером {dev_num} нет. "
                         +"Попробуйте вводить номера от 1 до 15 или"
                         +"проверьте словарь портов.")
-            new_tenz = Tenz(tenz_name, port_number)
+            new_tenz = Tenz(dev_num, tenz_name, port_number)
             is_opening_succ = new_tenz.open_comport()
             if is_opening_succ:
                 #we need new_tenz in tenzes if only its port opened
@@ -513,17 +540,25 @@ class Tenzes(dict):
             # del self[dev_num] #remove from Tenzes dict. overkill. NEED TESTING
         print(self.keys())
 
-    def get_all_plot_data(self) -> List[Tuple[List[float], List[float]]]:
+    def get_all_plot_data(self) -> List[WeightTimeline]: #DEPRECATED
+        raise NotImplementedError("Obsolete method!")
         return [
             tenz.plot_data()
             for tenz in self.values()
         ]
 
     def get_some_tenzes_plot_data(self, device_numbers: List[int]) -> List[Tuple[List[float], List[float]]]:
+        raise NotImplementedError("Obsolete method!")
         return [
             self[dev_num].plot_data()
             for dev_num in device_numbers
         ]
+
+    def get_last_absolute_units(self) -> Dict[int, float]:
+        return {
+            dev_num : tenz.weight_timeline[-1].weight
+            for dev_num, tenz in self.items()
+        }
 
 #-----------------------------------MAIN FOR TESTING-------------------------------------
 def calibration_test(): #OUTDATED
