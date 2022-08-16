@@ -1,5 +1,4 @@
-# developed by Andrey Rahimov. Organisation:SDIMPI
-# command protocol partially provided by Fedya
+# developed by Andrew R.
 
 from typing import List, Tuple, Dict, Optional
 from importlib import reload
